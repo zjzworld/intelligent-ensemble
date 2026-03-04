@@ -2,6 +2,8 @@ const DEFAULT_PASSWORD = "592909";
 const DEFAULT_AUTH_SECRET = "intelligent-ensemble-auth-secret";
 const AUTH_TTL_MS = 12 * 60 * 60 * 1000;
 const MODEL_CACHE_TTL_MS = 60 * 1000;
+const DISCORD_CACHE_TTL_MS = 5 * 1000;
+const DISCORD_API_BASE = "https://discord.com/api/v10";
 
 const AGENTS = [
   "Karina - Orchestrator",
@@ -33,8 +35,7 @@ const FALLBACK_CODEX_MODELS = ["gpt-5.3-codex", "gpt-5-codex"];
 const STATIC_EXTERNAL_APPS = [
   { app: "Cloudflare Pages", agent: "Karina - Orchestrator", ok: true, detail: "active" },
   { app: "GitHub", agent: "Seunggi - DevOps", ok: true, detail: "connected" },
-  { app: "Notion", agent: "Haerin - DocOps", ok: false, detail: "not configured" },
-  { app: "Discord API", agent: "Karina - Orchestrator", ok: false, detail: "not configured" }
+  { app: "Notion", agent: "Haerin - DocOps", ok: false, detail: "not configured" }
 ];
 
 function getState() {
@@ -46,7 +47,12 @@ function getState() {
       workplace: [],
       modelCatalog: [],
       modelCatalogRefreshedAt: 0,
-      modelSourceStatus: {}
+      modelSourceStatus: {},
+      discordFeedRows: [],
+      discordFeedRefreshedAt: 0,
+      discordFeedStatus: { ok: false, detail: "not checked" },
+      syncedTokenRows: [],
+      syncedTokenStatus: { ok: false, detail: "not checked" }
     };
   }
   return globalThis.__INTELLIGENT_ENSEMBLE_EDGE_STATE;
@@ -117,6 +123,120 @@ function providerConfig(env) {
   };
 
   return { bailian, codex };
+}
+
+function discordSyncConfig(env) {
+  return {
+    token: String(env.DISCORD_SYNC_BOT_TOKEN || "").trim(),
+    channelId: String(env.DISCORD_SYNC_CHANNEL_ID || "").trim()
+  };
+}
+
+async function discordRequest({ token, endpoint, method = "GET", jsonBody = null }) {
+  const headers = { Authorization: `Bot ${token}` };
+  if (jsonBody) headers["Content-Type"] = "application/json";
+  const resp = await fetch(endpoint, {
+    method,
+    headers,
+    body: jsonBody ? JSON.stringify(jsonBody) : undefined
+  });
+  const payload = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const message = payload?.message || `HTTP ${resp.status}`;
+    throw new Error(`discord ${resp.status}: ${message}`);
+  }
+  return payload;
+}
+
+function mapDiscordMessagesToRows(messages = []) {
+  const sorted = [...messages].sort(
+    (a, b) => Date.parse(a?.timestamp || 0) - Date.parse(b?.timestamp || 0)
+  );
+  return sorted.map((message) => ({
+    id: String(message?.id || crypto.randomUUID()),
+    timestamp: message?.timestamp || nowIso(),
+    author: message?.author?.global_name || message?.author?.username || "Unknown",
+    content: String(message?.content || "").trim(),
+    attachments: (message?.attachments || []).map((item) => ({
+      filename: item?.filename || "attachment",
+      url: item?.url || "#"
+    }))
+  }));
+}
+
+async function refreshDiscordFeed(state, env, force = false) {
+  const cfg = discordSyncConfig(env);
+  if (!cfg.token || !cfg.channelId) {
+    state.discordFeedRows = [];
+    state.discordFeedRefreshedAt = Date.now();
+    state.discordFeedStatus = { ok: false, detail: "missing token or channel" };
+    return;
+  }
+
+  const now = Date.now();
+  if (!force && now - Number(state.discordFeedRefreshedAt || 0) < DISCORD_CACHE_TTL_MS) {
+    return;
+  }
+
+  try {
+    const messages = await discordRequest({
+      token: cfg.token,
+      endpoint: `${DISCORD_API_BASE}/channels/${cfg.channelId}/messages?limit=100`,
+      method: "GET"
+    });
+    state.discordFeedRows = mapDiscordMessagesToRows(Array.isArray(messages) ? messages : []);
+    state.discordFeedRefreshedAt = now;
+    state.discordFeedStatus = { ok: true, detail: `${state.discordFeedRows.length} rows` };
+  } catch (error) {
+    state.discordFeedRows = [];
+    state.discordFeedRefreshedAt = now;
+    state.discordFeedStatus = { ok: false, detail: String(error?.message || error) };
+  }
+}
+
+function normalizeTokenRows(payload) {
+  const candidates = [payload, payload?.rows, payload?.tokens, payload?.data, payload?.data?.rows, payload?.data?.tokens];
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) continue;
+    const rows = candidate
+      .map((row) => ({
+        model: String(row?.model || row?.name || row?.id || "").trim(),
+        requests: Number(row?.requests || row?.count || 0) || 0,
+        tokensDaily: Number(row?.tokensDaily || row?.daily || row?.dailyTokens || 0) || 0,
+        tokensTotal: Number(row?.tokensTotal || row?.total || row?.totalTokens || 0) || 0
+      }))
+      .filter((row) => row.model);
+    if (rows.length) return rows;
+  }
+  return [];
+}
+
+async function refreshSyncedTokenRows(state, env) {
+  const syncUrl = String(env.TOKEN_USAGE_SYNC_API_URL || "").trim();
+  const syncKey = String(env.TOKEN_USAGE_SYNC_API_KEY || "").trim();
+  if (!syncUrl) {
+    state.syncedTokenRows = [];
+    state.syncedTokenStatus = { ok: false, detail: "sync url missing" };
+    return;
+  }
+  try {
+    const headers = {};
+    if (syncKey) headers.Authorization = `Bearer ${syncKey}`;
+    const resp = await fetch(syncUrl, { method: "GET", headers });
+    const payload = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const err = payload?.error || payload?.message || `HTTP ${resp.status}`;
+      state.syncedTokenRows = [];
+      state.syncedTokenStatus = { ok: false, detail: String(err) };
+      return;
+    }
+    const rows = normalizeTokenRows(payload);
+    state.syncedTokenRows = rows;
+    state.syncedTokenStatus = { ok: true, detail: `${rows.length} rows` };
+  } catch (error) {
+    state.syncedTokenRows = [];
+    state.syncedTokenStatus = { ok: false, detail: String(error?.message || error) };
+  }
 }
 
 function buildModelRows(providerName, providerLabel, modelIds) {
@@ -427,6 +547,18 @@ function buildTokenRows(state, modelCatalog = []) {
       target.tokensDaily += Number(row.totalTokens || 0);
     }
   }
+
+  for (const row of state.syncedTokenRows || []) {
+    const key = `sync::${row.model}`;
+    if (!map.has(key)) {
+      map.set(key, { model: row.model, requests: 0, tokensDaily: 0, tokensTotal: 0 });
+      order.push(key);
+    }
+    const target = map.get(key);
+    target.requests += Number(row.requests || 0);
+    target.tokensDaily += Number(row.tokensDaily || 0);
+    target.tokensTotal += Number(row.tokensTotal || 0);
+  }
   return order.map((key) => map.get(key)).filter(Boolean);
 }
 
@@ -495,10 +627,18 @@ function buildAgentsStatus() {
   };
 }
 
-function buildExternalStatus() {
+function buildExternalStatus(state) {
   const checkedAt = nowIso();
-  const source = getState().modelSourceStatus || {};
+  const source = state.modelSourceStatus || {};
+  const discordStatus = state.discordFeedStatus || { ok: false, detail: "not checked" };
+  const tokenSyncStatus = state.syncedTokenStatus || { ok: false, detail: "not checked" };
   const modelSources = [
+    {
+      app: "Discord API",
+      agent: "Karina - Orchestrator",
+      ok: !!discordStatus.ok,
+      detail: discordStatus.detail || "not checked"
+    },
     {
       app: "Bailian Models API",
       agent: "Karina - Orchestrator",
@@ -510,6 +650,12 @@ function buildExternalStatus() {
       agent: "Karina - Orchestrator",
       ok: !!source?.codex?.ok,
       detail: source?.codex?.detail || "not checked"
+    },
+    {
+      app: "Token Usage Sync API",
+      agent: "Karina - Orchestrator",
+      ok: !!tokenSyncStatus.ok,
+      detail: tokenSyncStatus.detail || "not checked"
     }
   ];
   return {
@@ -519,10 +665,15 @@ function buildExternalStatus() {
 }
 
 function buildWorkplace(state, limit = 120) {
+  const maxRows = Math.max(1, Math.min(200, Number(limit) || 120));
+  const rows = (state.discordFeedRows && state.discordFeedRows.length
+    ? state.discordFeedRows
+    : state.workplace
+  ).slice(-maxRows);
   return {
     ok: true,
     startedAt: state.startedAt,
-    rows: state.workplace.slice(-Math.max(1, Math.min(200, Number(limit) || 120)))
+    rows
   };
 }
 
@@ -615,6 +766,7 @@ export const onRequest = async (context) => {
 
   if (route === "/dashboard/summary" && method === "GET") {
     await refreshModelCatalog(state, env);
+    await refreshSyncedTokenRows(state, env);
     return json(buildSummary(state));
   }
 
@@ -624,7 +776,9 @@ export const onRequest = async (context) => {
 
   if (route === "/external/status" && method === "GET") {
     await refreshModelCatalog(state, env);
-    return json(buildExternalStatus());
+    await refreshDiscordFeed(state, env);
+    await refreshSyncedTokenRows(state, env);
+    return json(buildExternalStatus(state));
   }
 
   if (route === "/chat/models" && method === "GET") {
@@ -633,6 +787,7 @@ export const onRequest = async (context) => {
   }
 
   if (route === "/workplace/messages" && method === "GET") {
+    await refreshDiscordFeed(state, env);
     return json(buildWorkplace(state, url.searchParams.get("limit")));
   }
 
