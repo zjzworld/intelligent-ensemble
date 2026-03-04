@@ -286,6 +286,13 @@ async function fetchProviderModels(config) {
       models: buildModelRows(config.name, config.label, config.fallbackModels)
     };
   }
+  if (/zjz\.world|intelligent\.zjz\.world/i.test(config.baseUrl)) {
+    return {
+      ok: false,
+      detail: "gateway misconfigured (loop risk)",
+      models: buildModelRows(config.name, config.label, config.fallbackModels)
+    };
+  }
   const target = `${config.baseUrl}${config.modelPath}`;
   try {
     const resp = await fetch(target, {
@@ -368,6 +375,9 @@ function resolveCatalogModel(catalog, rawValue) {
 async function callProviderChat(config, modelId, message) {
   if (!config.baseUrl || !config.apiKey) {
     throw new Error(`${config.label} gateway not configured`);
+  }
+  if (/zjz\.world|intelligent\.zjz\.world/i.test(config.baseUrl)) {
+    throw new Error(`${config.label} gateway misconfigured (loop risk)`);
   }
   const endpoint = `${config.baseUrl}${config.chatPath}`;
   const resp = await fetch(endpoint, {
