@@ -690,9 +690,9 @@ export const onRequest = async (context) => {
       const errText = String(error?.message || error);
       recordAlert(state, "CHAT_PROVIDER_ERROR", errText, "high");
       if (/gateway not configured|chat failed/i.test(errText)) {
-        return json({ ok: false, error: errText }, 502);
+        return json({ ok: false, error: errText }, 400);
       }
-      return json({ ok: false, error: `chat fatal: ${errText}` }, 500);
+      return json({ ok: false, error: `chat fatal: ${errText}` }, 400);
     }
   }
 
