@@ -35,9 +35,18 @@ const UI = {
   noAlerts: "No active alert"
 };
 
+const PREFIX_MODE = /^\/intelligent\/ensemble(?:\/|$)/.test(window.location.pathname);
+const API_BASE = PREFIX_MODE ? "/intelligent/ensemble/api" : "/api";
+
+function apiUrl(path) {
+  const clean = String(path || "").startsWith("/") ? String(path) : `/${String(path || "")}`;
+  return `${API_BASE}${clean}`;
+}
+
 const state = {
   authToken: "",
   unlocked: false,
+  unlocking: false,
   initialized: false,
   summary: null,
   agentsStatus: null,
@@ -51,8 +60,8 @@ const state = {
 const el = {
   appShell: document.getElementById("appShell"),
   unlockOverlay: document.getElementById("unlockOverlay"),
+  unlockCard: document.querySelector(".unlock-card"),
   unlockDigits: document.getElementById("unlockDigits"),
-  unlockBtn: document.getElementById("unlockBtn"),
   unlockError: document.getElementById("unlockError"),
   notionBtn: document.getElementById("notionBtn"),
   githubBtn: document.getElementById("githubBtn"),
@@ -142,8 +151,21 @@ function clearUnlockDigits() {
   }
 }
 
+function shakeUnlockCard() {
+  el.unlockCard?.classList.remove("shake");
+  void el.unlockCard?.offsetWidth;
+  el.unlockCard?.classList.add("shake");
+  setTimeout(() => {
+    el.unlockCard?.classList.remove("shake");
+  }, 320);
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    navigator.vibrate(120);
+  }
+}
+
 function lockDashboard() {
   state.unlocked = false;
+  state.unlocking = false;
   state.authToken = "";
   el.appShell.classList.add("locked");
   el.unlockOverlay.classList.remove("hidden");
@@ -395,7 +417,7 @@ async function loadSummary() {
   if (!state.unlocked || state.loadingSummary) return;
   state.loadingSummary = true;
   try {
-    const data = await fetchJson("/api/dashboard/summary");
+    const data = await fetchJson(apiUrl("/dashboard/summary"));
     renderSummary(data);
   } finally {
     state.loadingSummary = false;
@@ -404,19 +426,19 @@ async function loadSummary() {
 
 async function loadAgentsStatus() {
   if (!state.unlocked) return;
-  const data = await fetchJson("/api/agents/status");
+  const data = await fetchJson(apiUrl("/agents/status"));
   renderAgentStatus(data);
 }
 
 async function loadExternalStatus() {
   if (!state.unlocked) return;
-  const data = await fetchJson("/api/external/status");
+  const data = await fetchJson(apiUrl("/external/status"));
   renderExternalStatus(data);
 }
 
 async function loadModels() {
   if (!state.unlocked) return;
-  const data = await fetchJson("/api/chat/models");
+  const data = await fetchJson(apiUrl("/chat/models"));
   const models = data.models || [];
   state.models = models;
   el.modelSelect.innerHTML = models
@@ -428,7 +450,7 @@ async function loadWorkplace() {
   if (!state.unlocked || state.loadingWorkplace) return;
   state.loadingWorkplace = true;
   try {
-    const data = await fetchJson("/api/workplace/messages?limit=120");
+    const data = await fetchJson(apiUrl("/workplace/messages?limit=120"));
     renderWorkplace(data);
   } finally {
     state.loadingWorkplace = false;
@@ -477,15 +499,16 @@ async function bootstrapDashboard() {
 }
 
 async function handleUnlock() {
+  if (state.unlocking) return;
   const password = getUnlockPassword();
   if (!/^\d{6}$/.test(password)) {
-    setUnlockError("Password must be 6 digits");
+    setUnlockError("请输入6位数字");
     return;
   }
-  el.unlockBtn.disabled = true;
+  state.unlocking = true;
   setUnlockError("");
   try {
-    const data = await fetchPublicJson("/api/auth/unlock", {
+    const data = await fetchPublicJson(apiUrl("/auth/unlock"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password })
@@ -493,9 +516,19 @@ async function handleUnlock() {
     unlockDashboard(data.token);
     await bootstrapDashboard();
   } catch (error) {
-    setUnlockError(String(error.message || error));
+    setUnlockError("密码错误，请重试");
+    shakeUnlockCard();
+    clearUnlockDigits();
+    el.unlockDigitInputs[0]?.focus();
   } finally {
-    el.unlockBtn.disabled = false;
+    state.unlocking = false;
+  }
+}
+
+function maybeAutoUnlock() {
+  const password = getUnlockPassword();
+  if (/^\d{6}$/.test(password)) {
+    handleUnlock();
   }
 }
 
@@ -520,7 +553,7 @@ async function handleSendChat() {
   setStatus(t("sending"));
   el.sendChatBtn.disabled = true;
   try {
-    const resp = await fetch("/api/chat/intelligent", {
+    const resp = await fetch(apiUrl("/chat/intelligent"), {
       method: "POST",
       headers: { "x-dashboard-token": state.authToken },
       body: form
@@ -548,7 +581,6 @@ async function handleSendChat() {
 }
 
 function bindEvents() {
-  el.unlockBtn.addEventListener("click", handleUnlock);
   el.unlockDigitInputs.forEach((input, index) => {
     input.addEventListener("input", () => {
       const digits = String(input.value || "").replace(/\D+/g, "");
@@ -556,6 +588,7 @@ function bindEvents() {
       if (input.value && index < el.unlockDigitInputs.length - 1) {
         el.unlockDigitInputs[index + 1].focus();
       }
+      maybeAutoUnlock();
     });
 
     input.addEventListener("keydown", (event) => {
@@ -582,6 +615,7 @@ function bindEvents() {
       } else {
         el.unlockDigitInputs[5]?.focus();
       }
+      maybeAutoUnlock();
     });
   });
 
