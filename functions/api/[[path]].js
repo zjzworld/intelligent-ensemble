@@ -627,25 +627,25 @@ export const onRequest = async (context) => {
   }
 
   if (route === "/chat/intelligent" && method === "POST") {
-    await refreshModelCatalog(state, env);
-    const providers = providerConfig(env);
-    const body = await readPayload(request);
-    const model = String(body?.model || "").trim();
-    const message = String(body?.message || "").trim();
-    if (!model) {
-      return json({ ok: false, error: "missing model" }, 400);
-    }
-    if (!message) {
-      return json({ ok: false, error: "message required" }, 400);
-    }
-
-    const selected = resolveCatalogModel(state.modelCatalog || [], model);
-    if (!selected) {
-      return json({ ok: false, error: "model not available" }, 400);
-    }
-
-    let chatResult = null;
     try {
+      await refreshModelCatalog(state, env);
+      const providers = providerConfig(env);
+      const body = await readPayload(request);
+      const model = String(body?.model || "").trim();
+      const message = String(body?.message || "").trim();
+      if (!model) {
+        return json({ ok: false, error: "missing model" }, 400);
+      }
+      if (!message) {
+        return json({ ok: false, error: "message required" }, 400);
+      }
+
+      const selected = resolveCatalogModel(state.modelCatalog || [], model);
+      if (!selected) {
+        return json({ ok: false, error: "model not available" }, 400);
+      }
+
+      let chatResult = null;
       if (selected.provider === "bailian") {
         chatResult = await callProviderChat(providers.bailian, selected.modelId, message);
       } else if (selected.provider === "codex") {
@@ -653,33 +653,37 @@ export const onRequest = async (context) => {
       } else {
         return json({ ok: false, error: "unsupported model provider" }, 400);
       }
+
+      const reply = chatResult.reply;
+      const usage = chatResult.usage;
+      state.tokenEvents.push({
+        ts: nowIso(),
+        model: selected.key,
+        modelKey: selected.key,
+        modelLabel: selected.label,
+        totalTokens: usage.total
+      });
+      if (state.tokenEvents.length > 5000) {
+        state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
+      }
+
+      addWorkplaceRow(state, "Owner", message);
+      addWorkplaceRow(state, `${selected.provider} / ${selected.modelId}`, reply);
+
+      return json({
+        ok: true,
+        model: selected.key,
+        reply,
+        usage
+      });
     } catch (error) {
-      recordAlert(state, "CHAT_PROVIDER_ERROR", String(error?.message || error), "high");
-      return json({ ok: false, error: String(error?.message || error) }, 502);
+      const errText = String(error?.message || error);
+      recordAlert(state, "CHAT_PROVIDER_ERROR", errText, "high");
+      if (/gateway not configured|chat failed/i.test(errText)) {
+        return json({ ok: false, error: errText }, 502);
+      }
+      return json({ ok: false, error: `chat fatal: ${errText}` }, 500);
     }
-
-    const reply = chatResult.reply;
-    const usage = chatResult.usage;
-    state.tokenEvents.push({
-      ts: nowIso(),
-      model: selected.key,
-      modelKey: selected.key,
-      modelLabel: selected.label,
-      totalTokens: usage.total
-    });
-    if (state.tokenEvents.length > 5000) {
-      state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
-    }
-
-    addWorkplaceRow(state, "Owner", message);
-    addWorkplaceRow(state, `${selected.provider} / ${selected.modelId}`, reply);
-
-    return json({
-      ok: true,
-      model: selected.key,
-      reply,
-      usage
-    });
   }
 
   recordAlert(state, "EDGE_ROUTE_MISS", `${method} ${route}`, "low");
