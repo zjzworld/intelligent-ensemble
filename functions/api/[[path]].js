@@ -1,6 +1,7 @@
 const DEFAULT_PASSWORD = "592909";
 const DEFAULT_AUTH_SECRET = "intelligent-ensemble-auth-secret";
 const AUTH_TTL_MS = 12 * 60 * 60 * 1000;
+const MODEL_CACHE_TTL_MS = 60 * 1000;
 
 const AGENTS = [
   "Karina - Orchestrator",
@@ -16,13 +17,24 @@ const AGENTS = [
   "Haerin - DocOps"
 ];
 
-const MODELS = [
-  { key: "openai/gpt-4.1-mini", label: "OpenAI GPT-4.1 mini", supportsImage: false },
-  { key: "openai/gpt-4.1", label: "OpenAI GPT-4.1", supportsImage: false },
-  { key: "openai/gpt-4o-mini", label: "OpenAI GPT-4o mini", supportsImage: false },
-  { key: "qwen/qwen3-max", label: "Qwen3 Max", supportsImage: false },
-  { key: "glm/glm-5", label: "GLM-5", supportsImage: false },
-  { key: "kimi/k2.5", label: "Kimi K2.5", supportsImage: false }
+const FALLBACK_BAILIAN_MODELS = [
+  "qwen3-max-2026-01-23",
+  "qwen3.5-plus",
+  "qwen3-coder-plus",
+  "qwen3-coder-next",
+  "glm-5",
+  "glm-4.7",
+  "MiniMax-M2.5",
+  "kimi-k2.5"
+];
+
+const FALLBACK_CODEX_MODELS = ["gpt-5.3-codex", "gpt-5-codex"];
+
+const STATIC_EXTERNAL_APPS = [
+  { app: "Cloudflare Pages", agent: "Karina - Orchestrator", ok: true, detail: "active" },
+  { app: "GitHub", agent: "Seunggi - DevOps", ok: true, detail: "connected" },
+  { app: "Notion", agent: "Haerin - DocOps", ok: false, detail: "not configured" },
+  { app: "Discord API", agent: "Karina - Orchestrator", ok: false, detail: "not configured" }
 ];
 
 function getState() {
@@ -31,7 +43,10 @@ function getState() {
       startedAt: new Date().toISOString(),
       tokenEvents: [],
       alerts: [],
-      workplace: []
+      workplace: [],
+      modelCatalog: [],
+      modelCatalogRefreshedAt: 0,
+      modelSourceStatus: {}
     };
   }
   return globalThis.__INTELLIGENT_ENSEMBLE_EDGE_STATE;
@@ -49,6 +64,94 @@ function json(data, status = 200) {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function parseCsv(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeBaseUrl(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return text.replace(/\/+$/, "");
+}
+
+function makeModelKey(provider, modelId) {
+  return `${provider}::${modelId}`;
+}
+
+function parseModelKey(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  if (text.includes("::")) {
+    const [provider, ...rest] = text.split("::");
+    const modelId = rest.join("::");
+    if (!provider || !modelId) return null;
+    return { provider, modelId, key: text };
+  }
+  return { provider: "legacy", modelId: text, key: text };
+}
+
+function providerConfig(env) {
+  const bailian = {
+    name: "bailian",
+    label: "Bailian",
+    baseUrl: normalizeBaseUrl(env.BAILIAN_BASE_URL || ""),
+    apiKey: String(env.BAILIAN_API_KEY || "").trim(),
+    modelPath: String(env.BAILIAN_MODEL_PATH || "/models").trim(),
+    chatPath: String(env.BAILIAN_CHAT_PATH || "/chat/completions").trim(),
+    fallbackModels: parseCsv(env.BAILIAN_MODELS).length ? parseCsv(env.BAILIAN_MODELS) : FALLBACK_BAILIAN_MODELS
+  };
+
+  const codex = {
+    name: "codex",
+    label: "Codex",
+    baseUrl: normalizeBaseUrl(env.CODEX_BASE_URL || ""),
+    apiKey: String(env.CODEX_API_KEY || "").trim(),
+    modelPath: String(env.CODEX_MODEL_PATH || "/models").trim(),
+    chatPath: String(env.CODEX_CHAT_PATH || "/chat/completions").trim(),
+    fallbackModels: parseCsv(env.CODEX_MODELS).length ? parseCsv(env.CODEX_MODELS) : FALLBACK_CODEX_MODELS
+  };
+
+  return { bailian, codex };
+}
+
+function buildModelRows(providerName, providerLabel, modelIds) {
+  const uniqueIds = [...new Set((modelIds || []).map((item) => String(item || "").trim()).filter(Boolean))];
+  return uniqueIds.map((modelId) => ({
+    key: makeModelKey(providerName, modelId),
+    modelId,
+    provider: providerName,
+    label: `${modelId} · ${providerLabel}`,
+    supportsImage: false
+  }));
+}
+
+function pickModelIds(payload) {
+  const listCandidates = [
+    payload,
+    payload?.data,
+    payload?.models,
+    payload?.result,
+    payload?.result?.data,
+    payload?.result?.models
+  ];
+  for (const candidate of listCandidates) {
+    if (!Array.isArray(candidate)) continue;
+    const ids = candidate
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (!item || typeof item !== "object") return "";
+        return item.id || item.model || item.name || item.key || "";
+      })
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+    if (ids.length) return ids;
+  }
+  return [];
 }
 
 function bytesToBase64Url(bytes) {
@@ -140,13 +243,172 @@ function recordAlert(state, type, detail, severity = "medium") {
   }
 }
 
-function buildTokenRows(state) {
+function normalizeReplyContent(content) {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object") {
+          return item.text || item.content || "";
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  if (content && typeof content === "object") {
+    return String(content.text || content.content || "").trim();
+  }
+  return "";
+}
+
+function normalizeUsage(payload, inputText, outputText) {
+  const usage = payload?.usage || {};
+  const input =
+    Number(usage.prompt_tokens ?? usage.input_tokens ?? usage.promptTokens ?? usage.inputTokens ?? usage.input ?? 0) || 0;
+  const output =
+    Number(
+      usage.completion_tokens ?? usage.output_tokens ?? usage.completionTokens ?? usage.outputTokens ?? usage.output ?? 0
+    ) || 0;
+  const total = Number(usage.total_tokens ?? usage.totalTokens ?? usage.total ?? input + output) || input + output;
+  if (input > 0 || output > 0 || total > 0) {
+    return { input, output, total };
+  }
+  return estimateUsage(inputText, outputText);
+}
+
+async function fetchProviderModels(config) {
+  if (!config.baseUrl || !config.apiKey) {
+    return {
+      ok: false,
+      detail: "missing base url or api key",
+      models: buildModelRows(config.name, config.label, config.fallbackModels)
+    };
+  }
+  const target = `${config.baseUrl}${config.modelPath}`;
+  try {
+    const resp = await fetch(target, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json"
+      }
+    });
+    const payload = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const err = payload?.error?.message || payload?.message || `HTTP ${resp.status}`;
+      return {
+        ok: false,
+        detail: `models failed: ${err}`,
+        models: buildModelRows(config.name, config.label, config.fallbackModels)
+      };
+    }
+    const ids = pickModelIds(payload);
+    if (!ids.length) {
+      return {
+        ok: false,
+        detail: "models empty, fallback used",
+        models: buildModelRows(config.name, config.label, config.fallbackModels)
+      };
+    }
+    let finalIds = ids;
+    if (config.name === "codex") {
+      const codexOnly = ids.filter((id) => /codex/i.test(id));
+      if (codexOnly.length) finalIds = codexOnly;
+    }
+    return {
+      ok: true,
+      detail: `${finalIds.length} models`,
+      models: buildModelRows(config.name, config.label, finalIds)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      detail: `models error: ${String(error?.message || error)}`,
+      models: buildModelRows(config.name, config.label, config.fallbackModels)
+    };
+  }
+}
+
+async function refreshModelCatalog(state, env, force = false) {
+  const now = Date.now();
+  if (!force && state.modelCatalog.length && now - Number(state.modelCatalogRefreshedAt || 0) < MODEL_CACHE_TTL_MS) {
+    return state.modelCatalog;
+  }
+
+  const providers = providerConfig(env);
+  const [bailianResult, codexResult] = await Promise.all([
+    fetchProviderModels(providers.bailian),
+    fetchProviderModels(providers.codex)
+  ]);
+
+  const merged = [...(bailianResult.models || []), ...(codexResult.models || [])];
+  state.modelCatalog = merged;
+  state.modelCatalogRefreshedAt = now;
+  state.modelSourceStatus = {
+    bailian: { ok: bailianResult.ok, detail: bailianResult.detail },
+    codex: { ok: codexResult.ok, detail: codexResult.detail }
+  };
+  return state.modelCatalog;
+}
+
+function resolveCatalogModel(catalog, rawValue) {
+  const parsed = parseModelKey(rawValue);
+  if (!parsed) return null;
+  const row = (catalog || []).find((item) => item.key === parsed.key);
+  if (row) return row;
+  if (parsed.provider === "legacy") {
+    const legacyMatch = (catalog || []).find((item) => item.modelId === parsed.modelId);
+    if (legacyMatch) return legacyMatch;
+  }
+  return null;
+}
+
+async function callProviderChat(config, modelId, message) {
+  if (!config.baseUrl || !config.apiKey) {
+    throw new Error(`${config.label} gateway not configured`);
+  }
+  const endpoint = `${config.baseUrl}${config.chatPath}`;
+  const resp = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [{ role: "user", content: message }],
+      stream: false
+    })
+  });
+  const payload = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    const err = payload?.error?.message || payload?.message || `HTTP ${resp.status}`;
+    throw new Error(`${config.label} chat failed: ${err}`);
+  }
+  const content = payload?.choices?.[0]?.message?.content ?? payload?.output?.text ?? "";
+  const reply = normalizeReplyContent(content) || "(empty reply)";
+  const usage = normalizeUsage(payload, message, reply);
+  return { reply, usage };
+}
+
+function buildTokenRows(state, modelCatalog = []) {
   const map = new Map();
+  const order = [];
   const today = new Date().toISOString().slice(0, 10);
+
+  for (const row of modelCatalog) {
+    if (!row?.key || map.has(row.key)) continue;
+    map.set(row.key, { model: row.label || row.key, requests: 0, tokensDaily: 0, tokensTotal: 0 });
+    order.push(row.key);
+  }
+
   for (const row of state.tokenEvents) {
-    const key = row.model || "unknown";
+    const key = row.modelKey || row.model || "unknown";
     if (!map.has(key)) {
-      map.set(key, { model: key, requests: 0, tokensDaily: 0, tokensTotal: 0 });
+      map.set(key, { model: row.modelLabel || key, requests: 0, tokensDaily: 0, tokensTotal: 0 });
+      order.push(key);
     }
     const target = map.get(key);
     target.requests += 1;
@@ -155,7 +417,7 @@ function buildTokenRows(state) {
       target.tokensDaily += Number(row.totalTokens || 0);
     }
   }
-  return [...map.values()].sort((a, b) => b.tokensTotal - a.tokensTotal).slice(0, 20);
+  return order.map((key) => map.get(key)).filter(Boolean);
 }
 
 function buildSummary(state) {
@@ -173,7 +435,7 @@ function buildSummary(state) {
       },
       totalFiles: 744
     },
-    tokens: buildTokenRows(state),
+    tokens: buildTokenRows(state, state.modelCatalog || []),
     tasks: [
       { content: "Pipeline memory sync", cadence: "Every 1m" },
       { content: "Vector quality probe", cadence: "Every 30m" },
@@ -225,14 +487,24 @@ function buildAgentsStatus() {
 
 function buildExternalStatus() {
   const checkedAt = nowIso();
+  const source = getState().modelSourceStatus || {};
+  const modelSources = [
+    {
+      app: "Bailian Models API",
+      agent: "Karina - Orchestrator",
+      ok: !!source?.bailian?.ok,
+      detail: source?.bailian?.detail || "not checked"
+    },
+    {
+      app: "Codex Models API",
+      agent: "Karina - Orchestrator",
+      ok: !!source?.codex?.ok,
+      detail: source?.codex?.detail || "not checked"
+    }
+  ];
   return {
     updatedAt: checkedAt,
-    rows: [
-      { app: "Cloudflare Pages", agent: "Karina - Orchestrator", ok: true, detail: "active", checkedAt },
-      { app: "GitHub", agent: "Seunggi - DevOps", ok: true, detail: "connected", checkedAt },
-      { app: "Notion", agent: "Haerin - DocOps", ok: false, detail: "not configured", checkedAt },
-      { app: "Discord API", agent: "Karina - Orchestrator", ok: false, detail: "not configured", checkedAt }
-    ]
+    rows: [...STATIC_EXTERNAL_APPS, ...modelSources].map((row) => ({ ...row, checkedAt }))
   };
 }
 
@@ -332,6 +604,7 @@ export const onRequest = async (context) => {
   }
 
   if (route === "/dashboard/summary" && method === "GET") {
+    await refreshModelCatalog(state, env);
     return json(buildSummary(state));
   }
 
@@ -340,11 +613,13 @@ export const onRequest = async (context) => {
   }
 
   if (route === "/external/status" && method === "GET") {
+    await refreshModelCatalog(state, env);
     return json(buildExternalStatus());
   }
 
   if (route === "/chat/models" && method === "GET") {
-    return json({ models: MODELS });
+    await refreshModelCatalog(state, env, true);
+    return json({ models: state.modelCatalog || [] });
   }
 
   if (route === "/workplace/messages" && method === "GET") {
@@ -352,6 +627,8 @@ export const onRequest = async (context) => {
   }
 
   if (route === "/chat/intelligent" && method === "POST") {
+    await refreshModelCatalog(state, env);
+    const providers = providerConfig(env);
     const body = await readPayload(request);
     const model = String(body?.model || "").trim();
     const message = String(body?.message || "").trim();
@@ -362,11 +639,32 @@ export const onRequest = async (context) => {
       return json({ ok: false, error: "message required" }, 400);
     }
 
-    const reply = `Edge assistant: ${message}`;
-    const usage = estimateUsage(message, reply);
+    const selected = resolveCatalogModel(state.modelCatalog || [], model);
+    if (!selected) {
+      return json({ ok: false, error: "model not available" }, 400);
+    }
+
+    let chatResult = null;
+    try {
+      if (selected.provider === "bailian") {
+        chatResult = await callProviderChat(providers.bailian, selected.modelId, message);
+      } else if (selected.provider === "codex") {
+        chatResult = await callProviderChat(providers.codex, selected.modelId, message);
+      } else {
+        return json({ ok: false, error: "unsupported model provider" }, 400);
+      }
+    } catch (error) {
+      recordAlert(state, "CHAT_PROVIDER_ERROR", String(error?.message || error), "high");
+      return json({ ok: false, error: String(error?.message || error) }, 502);
+    }
+
+    const reply = chatResult.reply;
+    const usage = chatResult.usage;
     state.tokenEvents.push({
       ts: nowIso(),
-      model,
+      model: selected.key,
+      modelKey: selected.key,
+      modelLabel: selected.label,
       totalTokens: usage.total
     });
     if (state.tokenEvents.length > 5000) {
@@ -374,11 +672,11 @@ export const onRequest = async (context) => {
     }
 
     addWorkplaceRow(state, "Owner", message);
-    addWorkplaceRow(state, "Assistant", reply);
+    addWorkplaceRow(state, `${selected.provider} / ${selected.modelId}`, reply);
 
     return json({
       ok: true,
-      model,
+      model: selected.key,
       reply,
       usage
     });
