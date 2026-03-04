@@ -11,7 +11,14 @@
       <div class="unlock-card">
         <h2>Dashboard Locked</h2>
         <p>Enter 6-digit password</p>
-        <input id="unlockPassword" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" />
+        <div id="unlockDigits" class="unlock-digits">
+          <input class="unlock-digit" type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" />
+          <input class="unlock-digit" type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" />
+          <input class="unlock-digit" type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" />
+          <input class="unlock-digit" type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" />
+          <input class="unlock-digit" type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" />
+          <input class="unlock-digit" type="password" inputmode="numeric" pattern="[0-9]" maxlength="1" autocomplete="off" />
+        </div>
         <button id="unlockBtn" type="button">Unlock</button>
         <div id="unlockError" class="unlock-error"></div>
       </div>

@@ -51,7 +51,7 @@ const state = {
 const el = {
   appShell: document.getElementById("appShell"),
   unlockOverlay: document.getElementById("unlockOverlay"),
-  unlockPassword: document.getElementById("unlockPassword"),
+  unlockDigits: document.getElementById("unlockDigits"),
   unlockBtn: document.getElementById("unlockBtn"),
   unlockError: document.getElementById("unlockError"),
   notionBtn: document.getElementById("notionBtn"),
@@ -100,6 +100,7 @@ const el = {
   workplaceMeta: document.getElementById("workplaceMeta"),
   workplaceFeed: document.getElementById("workplaceFeed")
 };
+el.unlockDigitInputs = Array.from(document.querySelectorAll(".unlock-digit"));
 
 function t(key) {
   return UI[key] || key;
@@ -131,12 +132,26 @@ function setUnlockError(text) {
   el.unlockError.textContent = text || "";
 }
 
+function getUnlockPassword() {
+  return el.unlockDigitInputs.map((input) => String(input.value || "").trim()).join("");
+}
+
+function clearUnlockDigits() {
+  for (const input of el.unlockDigitInputs) {
+    input.value = "";
+  }
+}
+
 function lockDashboard() {
   state.unlocked = false;
   state.authToken = "";
   el.appShell.classList.add("locked");
   el.unlockOverlay.classList.remove("hidden");
   setUnlockError("");
+  clearUnlockDigits();
+  setTimeout(() => {
+    el.unlockDigitInputs[0]?.focus();
+  }, 0);
 }
 
 function unlockDashboard(token) {
@@ -145,7 +160,7 @@ function unlockDashboard(token) {
   el.appShell.classList.remove("locked");
   el.unlockOverlay.classList.add("hidden");
   setUnlockError("");
-  el.unlockPassword.value = "";
+  clearUnlockDigits();
 }
 
 function applyLabels() {
@@ -462,7 +477,7 @@ async function bootstrapDashboard() {
 }
 
 async function handleUnlock() {
-  const password = String(el.unlockPassword.value || "").trim();
+  const password = getUnlockPassword();
   if (!/^\d{6}$/.test(password)) {
     setUnlockError("Password must be 6 digits");
     return;
@@ -534,11 +549,40 @@ async function handleSendChat() {
 
 function bindEvents() {
   el.unlockBtn.addEventListener("click", handleUnlock);
-  el.unlockPassword.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
+  el.unlockDigitInputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+      const digits = String(input.value || "").replace(/\D+/g, "");
+      input.value = digits.slice(-1);
+      if (input.value && index < el.unlockDigitInputs.length - 1) {
+        el.unlockDigitInputs[index + 1].focus();
+      }
+    });
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleUnlock();
+        return;
+      }
+      if (event.key === "Backspace" && !input.value && index > 0) {
+        el.unlockDigitInputs[index - 1].focus();
+      }
+    });
+
+    input.addEventListener("paste", (event) => {
+      const text = String(event.clipboardData?.getData("text") || "").replace(/\D+/g, "").slice(0, 6);
+      if (!text) return;
       event.preventDefault();
-      handleUnlock();
-    }
+      text.split("").forEach((char, offset) => {
+        const target = el.unlockDigitInputs[offset];
+        if (target) target.value = char;
+      });
+      if (text.length < 6) {
+        el.unlockDigitInputs[text.length]?.focus();
+      } else {
+        el.unlockDigitInputs[5]?.focus();
+      }
+    });
   });
 
   el.notionBtn.addEventListener("click", () => setStatus("Notion button ready (link pending)."));
