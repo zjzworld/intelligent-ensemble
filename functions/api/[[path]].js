@@ -296,7 +296,8 @@ export const onRequest = async (context) => {
   const url = new URL(request.url);
   const pathname = url.pathname;
   const method = request.method.toUpperCase();
-  const route = pathname.replace(/^\/api/, "") || "/";
+  const routeMatch = pathname.match(/\/api(\/.*)?$/);
+  const route = routeMatch ? routeMatch[1] || "/" : pathname.replace(/^\/api/, "") || "/";
   const password = String(env.DASHBOARD_PASSWORD || DEFAULT_PASSWORD).trim();
   const authSecret = String(env.AUTH_SECRET || DEFAULT_AUTH_SECRET).trim();
 
