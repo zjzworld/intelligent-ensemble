@@ -500,24 +500,42 @@ async function callProviderChat(config, modelId, message) {
     throw new Error(`${config.label} gateway misconfigured (loop risk)`);
   }
   const endpoint = `${config.baseUrl}${config.chatPath}`;
+  const useResponsesApi = /\/responses\b/i.test(config.chatPath);
+  const requestBody = useResponsesApi
+    ? {
+        model: modelId,
+        input: message,
+        stream: false
+      }
+    : {
+        model: modelId,
+        messages: [{ role: "user", content: message }],
+        stream: false
+      };
   const resp = await fetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      model: modelId,
-      messages: [{ role: "user", content: message }],
-      stream: false
-    })
+    body: JSON.stringify(requestBody)
   });
   const payload = await resp.json().catch(() => ({}));
   if (!resp.ok) {
     const err = payload?.error?.message || payload?.message || `HTTP ${resp.status}`;
     throw new Error(`${config.label} chat failed: ${err}`);
   }
-  const content = payload?.choices?.[0]?.message?.content ?? payload?.output?.text ?? "";
+  const responseOutputText =
+    payload?.output_text ??
+    payload?.output?.text ??
+    (Array.isArray(payload?.output)
+      ? payload.output
+          .flatMap((item) => item?.content || [])
+          .map((part) => part?.text || "")
+          .filter(Boolean)
+          .join("\n")
+      : "");
+  const content = payload?.choices?.[0]?.message?.content ?? responseOutputText ?? "";
   const reply = normalizeReplyContent(content) || "(empty reply)";
   const usage = normalizeUsage(payload, message, reply);
   return { reply, usage };
