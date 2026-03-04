@@ -1,0 +1,17 @@
+task_id: PRJ-20260304-001
+objective: 交付可上线的 wan-wan Dashboard（单页五面板，支持 Discord Agent 聊天发送）
+deliverable: 可运行 Node 服务 + 前端单页 + Discord kickoff 能力
+constraints:
+  - 保持黑白风、白底、聊天框最大
+  - 保留五个panel，不做配置编辑面板
+  - 支持选择 agent 和上传图片
+  - 可在 Discord 发起 Karina 任务
+success_criteria:
+  - 页面可在一个 URL 查看全部 5 个面板
+  - 能读取本地真实日志生成看板数据
+  - 能通过选定 agent 发文本/图片到 Discord
+  - Karina 可一键发起任务消息
+round_limit: 4
+owners:
+  main: karina
+  reviewer: stewart
