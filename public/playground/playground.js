@@ -185,27 +185,6 @@ function patchResult(name, patch) {
   state.resultsByName.set(name, { ...current, ...patch });
 }
 
-function applyBatchResults(data) {
-  const byName = new Map((Array.isArray(data?.results) ? data.results : []).map((row) => [String(row.name || ""), row]));
-  state.resultsByName = new Map(
-    state.selected.map((name) => {
-      const row = byName.get(name);
-      if (!row) return [name, { ...emptyResult(name), status: "failed", ok: false, error: "No response." }];
-      return [
-        name,
-        {
-          ...emptyResult(name),
-          ...row,
-          status: row?.ok ? "done" : "failed",
-          ok: !!row?.ok
-        }
-      ];
-    })
-  );
-  renderResults(state.resultsByName);
-  setStatus(`Completed in ${Number(data?.elapsedMs || 0)} ms`);
-}
-
 function processSseFrame(frame) {
   state.lastStreamEventAt = Date.now();
   const lines = String(frame || "").split(/\r?\n/);

@@ -1560,34 +1560,6 @@ async function callProviderChat(config, modelId, message) {
   throw new Error(lastError || `${config.label} chat failed`);
 }
 
-async function callProviderChatWithRetry(config, modelId, message, options = {}) {
-  const maxRetries = Math.max(0, Math.min(3, Number(options.maxRetries ?? 1) || 0));
-  const onRetry = typeof options.onRetry === "function" ? options.onRetry : null;
-  let attempt = 0;
-  let lastError = null;
-  while (attempt <= maxRetries) {
-    try {
-      const result = await callProviderChat(config, modelId, message);
-      return { ...result, attempts: attempt + 1 };
-    } catch (error) {
-      lastError = error;
-      if (attempt >= maxRetries || !isRetryableModelError(error)) break;
-      attempt += 1;
-      const waitMs = 300 * attempt;
-      if (onRetry) {
-        onRetry({
-          attempt,
-          maxRetries,
-          delayMs: waitMs,
-          error: String(error?.message || error)
-        });
-      }
-      await delay(waitMs);
-    }
-  }
-  throw lastError || new Error(`${config.label} chat failed`);
-}
-
 async function callProviderChatStream(config, modelId, message, onDelta) {
   if (!config.baseUrl || !config.apiKey) {
     throw new Error(`${config.label} gateway not configured`);
@@ -2136,194 +2108,138 @@ export const onRequest = async (context) => {
     }
 
     const wantsStream = body?.stream === true || /text\/event-stream/i.test(String(request.headers.get("accept") || ""));
-    if (wantsStream) {
-      const providers = playgroundProviderConfig(env);
-      const startedAt = Date.now();
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        start(controller) {
-          const send = (event, payload) => {
-            try {
-              controller.enqueue(encoder.encode(formatSseEvent(event, payload)));
-            } catch {
-              // ignore broken stream
-            }
-          };
-
-          const run = async () => {
-            send("init", {
-              ok: true,
-              prompt,
-              models: selectedRows.map((row) => row.name),
-              defaults: [...PLAYGROUND_DEFAULT_MODELS]
-            });
-
-            await Promise.all(
-              selectedRows.map(async (row) => {
-                const provider = providers[row.provider];
-                let usedModelId = row.modelId;
-                const started = Date.now();
-                send("model_start", {
-                  name: row.name,
-                  provider: row.provider,
-                  modelId: usedModelId
-                });
-
-                try {
-                  let chat = await callProviderChatStreamWithRetry(
-                    provider,
-                    usedModelId,
-                    prompt,
-                    (delta) => {
-                      send("model_delta", {
-                        name: row.name,
-                        provider: row.provider,
-                        modelId: usedModelId,
-                        delta: String(delta || "")
-                      });
-                    },
-                    {
-                      maxRetries: 1,
-                      onRetry: (retry) => {
-                        send("model_info", {
-                          name: row.name,
-                          provider: row.provider,
-                          modelId: usedModelId,
-                          info: `retry ${retry.attempt}/${retry.maxRetries} (${retry.delayMs}ms)`
-                        });
-                      }
-                    }
-                  );
-
-                  const ended = Date.now();
-                  const usage = chat?.usage || estimateUsage(prompt, chat?.reply || "");
-                  state.tokenEvents.push({
-                    id: crypto.randomUUID(),
-                    ts: nowIso(),
-                    modelKey: makeModelKey(row.provider, usedModelId),
-                    modelLabel: row.name,
-                    totalTokens: Number(usage?.total || 0) || 0
-                  });
-                  if (state.tokenEvents.length > 5000) {
-                    state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
-                  }
-
-                  send("model_end", {
-                    name: row.name,
-                    provider: row.provider,
-                    modelId: usedModelId,
-                    ok: true,
-                    reply: String(chat?.reply || ""),
-                    latencyMs: Math.max(0, ended - started),
-                    usage: {
-                      input: Number(usage?.input || 0) || 0,
-                      output: Number(usage?.output || 0) || 0,
-                      total: Number(usage?.total || 0) || 0
-                    }
-                  });
-                } catch (error) {
-                  send("model_end", {
-                    name: row.name,
-                    provider: row.provider,
-                    modelId: usedModelId,
-                    ok: false,
-                    error: String(error?.message || error),
-                    latencyMs: Math.max(0, Date.now() - started),
-                    usage: { input: 0, output: 0, total: 0 }
-                  });
-                }
-              })
-            );
-
-            send("complete", {
-              ok: true,
-              prompt,
-              elapsedMs: Math.max(0, Date.now() - startedAt),
-              defaults: [...PLAYGROUND_DEFAULT_MODELS]
-            });
-            controller.close();
-          };
-
-          run().catch((error) => {
-            send("error", {
-              ok: false,
-              error: String(error?.message || error),
-              elapsedMs: Math.max(0, Date.now() - startedAt)
-            });
-            try {
-              controller.close();
-            } catch {
-              // ignore close race
-            }
-          });
-        }
-      });
-
-      return new Response(stream, {
-        headers: {
-          "content-type": "text/event-stream; charset=utf-8",
-          "cache-control": "no-store",
-          connection: "keep-alive"
-        }
-      });
+    if (!wantsStream) {
+      return json({ ok: false, error: "stream required" }, 400);
     }
 
     const providers = playgroundProviderConfig(env);
     const startedAt = Date.now();
-    const results = await Promise.all(
-      selectedRows.map(async (row) => {
-        const provider = providers[row.provider];
-        let usedModelId = row.modelId;
-        const started = Date.now();
-        try {
-          let chat = await callProviderChatWithRetry(provider, usedModelId, prompt, { maxRetries: 1 });
-          const ended = Date.now();
-          const usage = chat?.usage || estimateUsage(prompt, chat?.reply || "");
-
-          state.tokenEvents.push({
-            id: crypto.randomUUID(),
-            ts: nowIso(),
-            modelKey: makeModelKey(row.provider, usedModelId),
-            modelLabel: row.name,
-            totalTokens: Number(usage?.total || 0) || 0
-          });
-          if (state.tokenEvents.length > 5000) {
-            state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const send = (event, payload) => {
+          try {
+            controller.enqueue(encoder.encode(formatSseEvent(event, payload)));
+          } catch {
+            // ignore broken stream
           }
+        };
 
-          return {
-            name: row.name,
-            provider: row.provider,
-            modelId: usedModelId,
+        const run = async () => {
+          send("init", {
             ok: true,
-            reply: String(chat?.reply || ""),
-            latencyMs: Math.max(0, ended - started),
-            usage: {
-              input: Number(usage?.input || 0) || 0,
-              output: Number(usage?.output || 0) || 0,
-              total: Number(usage?.total || 0) || 0
-            }
-          };
-        } catch (error) {
-          return {
-            name: row.name,
-            provider: row.provider,
-            modelId: usedModelId,
+            prompt,
+            models: selectedRows.map((row) => row.name),
+            defaults: [...PLAYGROUND_DEFAULT_MODELS]
+          });
+
+          await Promise.all(
+            selectedRows.map(async (row) => {
+              const provider = providers[row.provider];
+              let usedModelId = row.modelId;
+              const started = Date.now();
+              send("model_start", {
+                name: row.name,
+                provider: row.provider,
+                modelId: usedModelId
+              });
+
+              try {
+                let chat = await callProviderChatStreamWithRetry(
+                  provider,
+                  usedModelId,
+                  prompt,
+                  (delta) => {
+                    send("model_delta", {
+                      name: row.name,
+                      provider: row.provider,
+                      modelId: usedModelId,
+                      delta: String(delta || "")
+                    });
+                  },
+                  {
+                    maxRetries: 1,
+                    onRetry: (retry) => {
+                      send("model_info", {
+                        name: row.name,
+                        provider: row.provider,
+                        modelId: usedModelId,
+                        info: `retry ${retry.attempt}/${retry.maxRetries} (${retry.delayMs}ms)`
+                      });
+                    }
+                  }
+                );
+
+                const ended = Date.now();
+                const usage = chat?.usage || estimateUsage(prompt, chat?.reply || "");
+                state.tokenEvents.push({
+                  id: crypto.randomUUID(),
+                  ts: nowIso(),
+                  modelKey: makeModelKey(row.provider, usedModelId),
+                  modelLabel: row.name,
+                  totalTokens: Number(usage?.total || 0) || 0
+                });
+                if (state.tokenEvents.length > 5000) {
+                  state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
+                }
+
+                send("model_end", {
+                  name: row.name,
+                  provider: row.provider,
+                  modelId: usedModelId,
+                  ok: true,
+                  reply: String(chat?.reply || ""),
+                  latencyMs: Math.max(0, ended - started),
+                  usage: {
+                    input: Number(usage?.input || 0) || 0,
+                    output: Number(usage?.output || 0) || 0,
+                    total: Number(usage?.total || 0) || 0
+                  }
+                });
+              } catch (error) {
+                send("model_end", {
+                  name: row.name,
+                  provider: row.provider,
+                  modelId: usedModelId,
+                  ok: false,
+                  error: String(error?.message || error),
+                  latencyMs: Math.max(0, Date.now() - started),
+                  usage: { input: 0, output: 0, total: 0 }
+                });
+              }
+            })
+          );
+
+          send("complete", {
+            ok: true,
+            prompt,
+            elapsedMs: Math.max(0, Date.now() - startedAt),
+            defaults: [...PLAYGROUND_DEFAULT_MODELS]
+          });
+          controller.close();
+        };
+
+        run().catch((error) => {
+          send("error", {
             ok: false,
             error: String(error?.message || error),
-            latencyMs: Math.max(0, Date.now() - started),
-            usage: { input: 0, output: 0, total: 0 }
-          };
-        }
-      })
-    );
+            elapsedMs: Math.max(0, Date.now() - startedAt)
+          });
+          try {
+            controller.close();
+          } catch {
+            // ignore close race
+          }
+        });
+      }
+    });
 
-    return json({
-      ok: true,
-      prompt,
-      elapsedMs: Math.max(0, Date.now() - startedAt),
-      results,
-      defaults: [...PLAYGROUND_DEFAULT_MODELS]
+    return new Response(stream, {
+      headers: {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "no-store",
+        connection: "keep-alive"
+      }
     });
   }
 
