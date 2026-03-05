@@ -35,12 +35,12 @@ const FALLBACK_CODEX_MODELS = ["gpt-5.3-codex", "gpt-5-codex"];
 
 const PLAYGROUND_DEFAULT_MODELS = ["GPT-5.3-Codex", "Claude-Opus-4.6"];
 const PLAYGROUND_MODEL_CATALOG = [
-  { name: "GPT-5.3-Codex", provider: "codex", modelId: "gpt-5.3-codex" },
-  { name: "Claude-Opus-4.6", provider: "claude", modelId: "Claude-Opus-4.6" },
-  { name: "Qwen-coder-plus", provider: "bailian", modelId: "qwen3-coder-plus" },
-  { name: "GLM-5", provider: "bailian", modelId: "glm-5" },
-  { name: "Kimi-K2.5", provider: "bailian", modelId: "kimi-k2.5" },
-  { name: "MiniMax-M2.5", provider: "bailian", modelId: "MiniMax-M2.5" }
+  { name: "GPT-5.3-Codex", provider: "codex" },
+  { name: "Claude-Opus-4.6", provider: "claude" },
+  { name: "Qwen-coder-plus", provider: "bailian" },
+  { name: "GLM-5", provider: "bailian" },
+  { name: "Kimi-K2.5", provider: "bailian" },
+  { name: "MiniMax-M2.5", provider: "bailian" }
 ];
 
 const STATIC_EXTERNAL_APPS = [
@@ -626,12 +626,35 @@ function playgroundProviderConfig(env) {
   };
 }
 
-function getPlaygroundModelRows() {
+function resolvePlaygroundModelId(env, row) {
+  const name = String(row?.name || "").trim();
+  if (name === "GPT-5.3-Codex") {
+    return String(env.PLAYGROUND_CODEX_MODEL || "gpt-5.3-codex").trim();
+  }
+  if (name === "Claude-Opus-4.6") {
+    return String(env.PLAYGROUND_CLAUDE_MODEL || "Claude-Opus-4.6").trim();
+  }
+  if (name === "Qwen-coder-plus") {
+    return String(env.PLAYGROUND_QWEN_MODEL || "qwen3-coder-plus").trim();
+  }
+  if (name === "GLM-5") {
+    return String(env.PLAYGROUND_GLM5_MODEL || "glm-5").trim();
+  }
+  if (name === "Kimi-K2.5") {
+    return String(env.PLAYGROUND_KIMI_MODEL || "kimi-k2.5").trim();
+  }
+  if (name === "MiniMax-M2.5") {
+    return String(env.PLAYGROUND_MINIMAX_MODEL || "MiniMax-M2.5").trim();
+  }
+  return "";
+}
+
+function getPlaygroundModelRows(env) {
   return PLAYGROUND_MODEL_CATALOG.map((row) => ({
     name: row.name,
     provider: row.provider,
-    modelId: row.modelId
-  }));
+    modelId: resolvePlaygroundModelId(env, row)
+  })).filter((row) => row.modelId);
 }
 
 function discordSyncConfig(env) {
@@ -1740,7 +1763,7 @@ export const onRequest = async (context) => {
 
   if (route === "/playground/models" && method === "GET") {
     return json({
-      models: getPlaygroundModelRows(),
+      models: getPlaygroundModelRows(env),
       defaults: [...PLAYGROUND_DEFAULT_MODELS]
     });
   }
@@ -1755,7 +1778,8 @@ export const onRequest = async (context) => {
     const inputModels = Array.isArray(body?.models) ? body.models : [];
     const normalizedNames = [...new Set(inputModels.map((item) => String(item || "").trim()).filter(Boolean))].slice(0, 6);
     const selectedNames = normalizedNames.length ? normalizedNames : [...PLAYGROUND_DEFAULT_MODELS];
-    const catalogMap = new Map(PLAYGROUND_MODEL_CATALOG.map((row) => [row.name, row]));
+    const playgroundRows = getPlaygroundModelRows(env);
+    const catalogMap = new Map(playgroundRows.map((row) => [row.name, row]));
     const selectedRows = selectedNames.map((name) => catalogMap.get(name)).filter(Boolean);
     if (!selectedRows.length) {
       return json({ ok: false, error: "no valid models selected" }, 400);
@@ -1766,16 +1790,21 @@ export const onRequest = async (context) => {
     const results = await Promise.all(
       selectedRows.map(async (row) => {
         const provider = providers[row.provider];
+        let usedModelId = row.modelId;
         const started = Date.now();
         try {
-          const chat = await callProviderChat(provider, row.modelId, prompt);
+          let chat = await callProviderChat(provider, usedModelId, prompt);
+          if (!chat?.reply && row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
+            usedModelId = "gpt-5-codex";
+            chat = await callProviderChat(provider, usedModelId, prompt);
+          }
           const ended = Date.now();
           const usage = chat?.usage || estimateUsage(prompt, chat?.reply || "");
 
           state.tokenEvents.push({
             id: crypto.randomUUID(),
             ts: nowIso(),
-            modelKey: makeModelKey(row.provider, row.modelId),
+            modelKey: makeModelKey(row.provider, usedModelId),
             modelLabel: row.name,
             totalTokens: Number(usage?.total || 0) || 0
           });
@@ -1786,7 +1815,7 @@ export const onRequest = async (context) => {
           return {
             name: row.name,
             provider: row.provider,
-            modelId: row.modelId,
+            modelId: usedModelId,
             ok: true,
             reply: String(chat?.reply || ""),
             latencyMs: Math.max(0, ended - started),
@@ -1797,10 +1826,43 @@ export const onRequest = async (context) => {
             }
           };
         } catch (error) {
+          if (row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
+            try {
+              usedModelId = "gpt-5-codex";
+              const fallbackChat = await callProviderChat(provider, usedModelId, prompt);
+              const ended = Date.now();
+              const usage = fallbackChat?.usage || estimateUsage(prompt, fallbackChat?.reply || "");
+              state.tokenEvents.push({
+                id: crypto.randomUUID(),
+                ts: nowIso(),
+                modelKey: makeModelKey(row.provider, usedModelId),
+                modelLabel: row.name,
+                totalTokens: Number(usage?.total || 0) || 0
+              });
+              if (state.tokenEvents.length > 5000) {
+                state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
+              }
+              return {
+                name: row.name,
+                provider: row.provider,
+                modelId: usedModelId,
+                ok: true,
+                reply: String(fallbackChat?.reply || ""),
+                latencyMs: Math.max(0, ended - started),
+                usage: {
+                  input: Number(usage?.input || 0) || 0,
+                  output: Number(usage?.output || 0) || 0,
+                  total: Number(usage?.total || 0) || 0
+                }
+              };
+            } catch {
+              // keep original error output
+            }
+          }
           return {
             name: row.name,
             provider: row.provider,
-            modelId: row.modelId,
+            modelId: usedModelId,
             ok: false,
             error: String(error?.message || error),
             latencyMs: Math.max(0, Date.now() - started),
