@@ -58,6 +58,7 @@ function getState() {
       syncedTokenRowsRefreshedAt: 0,
       dynamicCronRows: [],
       dynamicProjectRows: [],
+      karinaExecStatus: { ok: false, detail: "not checked" },
       sqliteReady: false
     };
   }
@@ -602,6 +603,114 @@ function discordSyncConfig(env) {
     token: String(env.DISCORD_SYNC_BOT_TOKEN || "").trim(),
     channelId: String(env.DISCORD_SYNC_CHANNEL_ID || "").trim()
   };
+}
+
+function toBooleanEnv(value) {
+  return /^(1|true|yes|on)$/i.test(String(value || "").trim());
+}
+
+function karinaExecConfig(env) {
+  const timeoutRaw = Number(String(env.KARINA_EXEC_TIMEOUT_MS || "").trim());
+  const timeoutMs = Number.isFinite(timeoutRaw) && timeoutRaw >= 2_000 && timeoutRaw <= 300_000 ? timeoutRaw : 90_000;
+  return {
+    url: String(env.KARINA_EXEC_API_URL || "").trim(),
+    apiKey: String(env.KARINA_EXEC_API_KEY || "").trim(),
+    timeoutMs,
+    mirrorDiscord: toBooleanEnv(env.KARINA_MIRROR_DISCORD)
+  };
+}
+
+function extractTextFromAny(value, depth = 0) {
+  if (depth > 4 || value === null || value === undefined) return "";
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => extractTextFromAny(item, depth + 1))
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+  if (value && typeof value === "object") {
+    const keys = ["reply", "message", "output_text", "outputText", "text", "content", "result", "data"];
+    for (const key of keys) {
+      const text = extractTextFromAny(value[key], depth + 1);
+      if (text) return text;
+    }
+    const normalized = normalizeReplyContent(value);
+    if (normalized) return normalized;
+  }
+  return "";
+}
+
+async function callKarinaExecutor(state, env, message, board = "project") {
+  const cfg = karinaExecConfig(env);
+  if (!cfg.url) {
+    state.karinaExecStatus = { ok: false, detail: "missing KARINA_EXEC_API_URL" };
+    throw new Error("karina executor not configured");
+  }
+
+  let timeoutId = null;
+  const controller = new AbortController();
+  timeoutId = setTimeout(() => controller.abort("karina executor timeout"), cfg.timeoutMs);
+
+  try {
+    const headers = {
+      "Content-Type": "application/json"
+    };
+    if (cfg.apiKey) {
+      headers.Authorization = `Bearer ${cfg.apiKey}`;
+    }
+
+    const resp = await fetch(cfg.url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        message,
+        board,
+        source: "intelligent-ensemble",
+        mode: "execute"
+      }),
+      signal: controller.signal
+    });
+
+    const contentType = String(resp.headers.get("content-type") || "").toLowerCase();
+    let payload = {};
+    let rawText = "";
+    if (contentType.includes("application/json")) {
+      payload = await resp.json().catch(() => ({}));
+    } else {
+      rawText = await resp.text().catch(() => "");
+      if (rawText && rawText.trim().startsWith("{")) {
+        try {
+          payload = JSON.parse(rawText);
+        } catch {
+          payload = {};
+        }
+      }
+    }
+
+    if (!resp.ok) {
+      const detail = extractTextFromAny(payload) || rawText || `HTTP ${resp.status}`;
+      state.karinaExecStatus = { ok: false, detail: `executor ${resp.status}: ${detail}` };
+      throw new Error(`karina executor failed: ${detail}`);
+    }
+
+    const reply = extractTextFromAny(payload) || rawText || "Karina executed.";
+    state.karinaExecStatus = { ok: true, detail: `executor ok (${resp.status})` };
+    return { reply, config: cfg };
+  } catch (error) {
+    if (String(error?.name || "").toLowerCase() === "aborterror") {
+      state.karinaExecStatus = { ok: false, detail: "executor timeout" };
+      throw new Error("karina executor timeout");
+    }
+    const detail = String(error?.message || error);
+    if (!state.karinaExecStatus?.ok) {
+      state.karinaExecStatus = { ok: false, detail };
+    }
+    throw error;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 async function discordRequest({ token, endpoint, method = "GET", jsonBody = null }) {
@@ -1249,9 +1358,17 @@ function buildExternalStatus(state, env) {
   const source = state.modelSourceStatus || {};
   const discordStatus = state.discordFeedStatus || { ok: false, detail: "not checked" };
   const tokenSyncStatus = state.syncedTokenStatus || { ok: false, detail: "not checked" };
+  const karinaExec = state.karinaExecStatus || { ok: false, detail: "not checked" };
+  const karinaExecCfg = karinaExecConfig(env);
   const hasSqliteBinding = !!getSqliteDb(env);
   const sqliteReady = hasSqliteBinding && !!state.sqliteReady;
   const modelSources = [
+    {
+      app: "Karina Executor API",
+      agent: "Karina - Orchestrator",
+      ok: karinaExecCfg.url ? !!karinaExec.ok : false,
+      detail: karinaExecCfg.url ? karinaExec.detail || "configured" : "missing KARINA_EXEC_API_URL"
+    },
     {
       app: "Discord API",
       agent: "Karina - Orchestrator",
@@ -1578,6 +1695,8 @@ export const onRequest = async (context) => {
       }
 
       const board = classifyKarinaBoard(message);
+      const execResult = await callKarinaExecutor(state, env, message, board);
+
       if (board === "cron") {
         const cronRow = { content: message, cadence: inferCronCadence(message), updatedAt: nowIso() };
         upsertCronRow(state, cronRow.content, cronRow.cadence);
@@ -1594,15 +1713,26 @@ export const onRequest = async (context) => {
         }
       }
 
-      const sent = await sendDiscordChannelMessage(env, message);
       addWorkplaceRow(state, "Owner", message);
-      addWorkplaceRow(state, "Karina Router", `Routed to ${board.toUpperCase()} panel`);
+      addWorkplaceRow(state, "Karina - Orchestrator", String(execResult.reply || "Karina executed."));
+
+      const execCfg = karinaExecConfig(env);
+      let mirroredToDiscord = false;
+      if (execCfg.mirrorDiscord) {
+        try {
+          await sendDiscordChannelMessage(env, message);
+          mirroredToDiscord = true;
+        } catch (error) {
+          recordAlert(state, "KARINA_MIRROR_ERROR", String(error?.message || error), "low");
+        }
+      }
+
       return json({
         ok: true,
-        reply: board === "cron" ? "已发送给 Karina，任务已同步到 Cron 面板。" : "已发送给 Karina，任务已同步到 Project 面板。",
+        reply: String(execResult.reply || ""),
         board,
         sentAt: nowIso(),
-        delivered: !!sent?.id
+        mirroredToDiscord
       });
     } catch (error) {
       const detail = String(error?.message || error);

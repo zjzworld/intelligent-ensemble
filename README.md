@@ -52,6 +52,13 @@ npm start
 - `TOKEN_USAGE_SYNC_API_URL`
 - `TOKEN_USAGE_SYNC_API_KEY`（可选）
 
+Karina 主程序直连执行（`/api/chat/karina`）新增环境变量：
+
+- `KARINA_EXEC_API_URL`（必填，Karina 主程序执行入口）
+- `KARINA_EXEC_API_KEY`（可选，Bearer 鉴权）
+- `KARINA_EXEC_TIMEOUT_MS`（可选，默认 90000）
+- `KARINA_MIRROR_DISCORD`（可选，默认关闭；设为 `true` 才镜像到 Discord）
+
 可选自建同步端点（已内置）：`GET /api/token/usage-sync`（Bearer 鉴权，使用 `TOKEN_USAGE_SYNC_API_KEY`）。
 
 ## 数据规则
