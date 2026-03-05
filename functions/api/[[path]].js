@@ -327,6 +327,54 @@ async function refreshTokenEventsFromDb(state, env, force = false) {
   state.tokenEventsRefreshedAt = now;
 }
 
+function extractBearerToken(request) {
+  const auth = String(request.headers.get("authorization") || "").trim();
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match ? String(match[1] || "").trim() : "";
+}
+
+async function buildTokenSyncRows(state, env) {
+  const db = await ensureSqliteReady(state, env);
+  const today = new Date().toISOString().slice(0, 10);
+  if (db) {
+    const { results } = await db
+      .prepare(
+        `SELECT
+          model_key,
+          MAX(model_label) AS model_label,
+          COUNT(*) AS requests,
+          SUM(CASE WHEN substr(ts, 1, 10) = ?1 THEN total_tokens ELSE 0 END) AS tokens_daily,
+          SUM(total_tokens) AS tokens_total
+        FROM token_chat_events
+        GROUP BY model_key
+        ORDER BY tokens_total DESC, requests DESC`
+      )
+      .bind(today)
+      .all();
+    return (Array.isArray(results) ? results : []).map((row) => ({
+      model: String(row.model_key || row.model_label || "unknown"),
+      requests: Number(row.requests || 0) || 0,
+      tokensDaily: Number(row.tokens_daily || 0) || 0,
+      tokensTotal: Number(row.tokens_total || 0) || 0
+    }));
+  }
+
+  const map = new Map();
+  for (const row of state.tokenEvents || []) {
+    const key = String(row.modelKey || row.model || "unknown");
+    if (!map.has(key)) {
+      map.set(key, { model: key, requests: 0, tokensDaily: 0, tokensTotal: 0 });
+    }
+    const target = map.get(key);
+    target.requests += 1;
+    target.tokensTotal += Number(row.totalTokens || 0);
+    if (String(row.ts || "").slice(0, 10) === today) {
+      target.tokensDaily += Number(row.totalTokens || 0);
+    }
+  }
+  return [...map.values()];
+}
+
 function providerConfig(env) {
   const bailian = {
     name: "bailian",
@@ -828,6 +876,7 @@ function buildTokenRows(state, modelCatalog = []) {
   const map = new Map();
   const order = [];
   const today = new Date().toISOString().slice(0, 10);
+  const hasSyncedRows = Array.isArray(state.syncedTokenRows) && state.syncedTokenRows.length > 0;
 
   for (const row of modelCatalog) {
     if (!row?.key || map.has(row.key)) continue;
@@ -835,17 +884,19 @@ function buildTokenRows(state, modelCatalog = []) {
     order.push(row.key);
   }
 
-  for (const row of state.tokenEvents) {
-    const key = row.modelKey || row.model || "unknown";
-    if (!map.has(key)) {
-      map.set(key, { model: row.modelLabel || key, requests: 0, tokensDaily: 0, tokensTotal: 0 });
-      order.push(key);
-    }
-    const target = map.get(key);
-    target.requests += 1;
-    target.tokensTotal += Number(row.totalTokens || 0);
-    if (String(row.ts || "").slice(0, 10) === today) {
-      target.tokensDaily += Number(row.totalTokens || 0);
+  if (!hasSyncedRows) {
+    for (const row of state.tokenEvents) {
+      const key = row.modelKey || row.model || "unknown";
+      if (!map.has(key)) {
+        map.set(key, { model: row.modelLabel || key, requests: 0, tokensDaily: 0, tokensTotal: 0 });
+        order.push(key);
+      }
+      const target = map.get(key);
+      target.requests += 1;
+      target.tokensTotal += Number(row.totalTokens || 0);
+      if (String(row.ts || "").slice(0, 10) === today) {
+        target.tokensDaily += Number(row.totalTokens || 0);
+      }
     }
   }
 
@@ -1065,6 +1116,25 @@ export const onRequest = async (context) => {
     const valid = await verifyAuthToken(token, authSecret);
     if (!valid) return json({ ok: false, error: "dashboard locked" }, 401);
     return json({ ok: true });
+  }
+
+  if (route === "/token/usage-sync" && method === "GET") {
+    const expectedKey = String(env.TOKEN_USAGE_SYNC_API_KEY || "").trim();
+    const inputKey = extractBearerToken(request);
+    if (!expectedKey) {
+      return json({ ok: false, error: "sync key not configured" }, 503);
+    }
+    if (!safeEqual(inputKey, expectedKey)) {
+      return json({ ok: false, error: "unauthorized" }, 401);
+    }
+
+    await refreshTokenEventsFromDb(state, env, true);
+    const rows = await buildTokenSyncRows(state, env);
+    return json({
+      ok: true,
+      updatedAt: nowIso(),
+      rows
+    });
   }
 
   const authToken = request.headers.get("x-dashboard-token") || "";

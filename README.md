@@ -52,6 +52,8 @@ npm start
 - `TOKEN_USAGE_SYNC_API_URL`
 - `TOKEN_USAGE_SYNC_API_KEY`（可选）
 
+可选自建同步端点（已内置）：`GET /api/token/usage-sync`（Bearer 鉴权，使用 `TOKEN_USAGE_SYNC_API_KEY`）。
+
 ## 数据规则
 
 - Memory: 统计 `T0/T1/T2/T3`（policy 归 `T3`），向量优良率每 30 分钟随机抽样。
