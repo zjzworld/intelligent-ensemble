@@ -1,0 +1,748 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Design Guidelines · Intelligent System</title>
+  <meta name="description" content="Calm Futurism Design Guidelines for intelligent products." />
+  <style>
+    @font-face {
+      font-family: "Roboto";
+      src: url("/fonts/Roboto-VariableFont_wdth,wght.ttf") format("truetype");
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "Special Gothic Condensed One";
+      src: url("/fonts/SpecialGothicCondensedOne-Regular.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      color-scheme: light;
+      --bg: #f8f8f8;
+      --surface: #ffffff;
+      --glass: rgba(255, 255, 255, 0.66);
+      --glass-strong: rgba(255, 255, 255, 0.8);
+      --line: rgba(25, 25, 27, 0.14);
+      --line-strong: rgba(25, 25, 27, 0.22);
+      --text: #1b1b1d;
+      --muted: #66666d;
+      --soft: #8a8a93;
+      --radius-sm: 12px;
+      --radius-md: 20px;
+      --radius-lg: 30px;
+      --radius-pill: 999px;
+      --space-1: 6px;
+      --space-2: 10px;
+      --space-3: 14px;
+      --space-4: 18px;
+      --space-5: 24px;
+      --space-6: 32px;
+      --space-7: 40px;
+      --space-8: 56px;
+      --shadow-soft: 0 14px 42px rgba(15, 15, 16, 0.12);
+      --shadow-lift: 0 24px 64px rgba(15, 15, 16, 0.16);
+      --font-display: "Special Gothic Condensed One", "Roboto", sans-serif;
+      --font-body: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
+      --max-width: 1320px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(1200px 900px at -10% -20%, #ffffff 0%, transparent 72%),
+        radial-gradient(1200px 900px at 110% -20%, #f2f2f2 0%, transparent 72%),
+        linear-gradient(170deg, #fcfcfc 0%, #f8f8f8 45%, #f3f3f3 100%);
+      color: var(--text);
+      font-family: var(--font-body);
+      letter-spacing: 0.002em;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(rgba(10, 10, 10, 0.06) 0.5px, transparent 0.5px);
+      background-size: 4px 4px;
+      opacity: 0.2;
+      mask-image: linear-gradient(180deg, transparent 0%, black 15%, black 85%, transparent 100%);
+      z-index: 0;
+    }
+
+    .page {
+      width: min(var(--max-width), 92vw);
+      margin: 0 auto;
+      padding: var(--space-5) 0 var(--space-8);
+      position: relative;
+      z-index: 1;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 12px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-5);
+      padding: 12px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--line);
+      background: var(--glass);
+      backdrop-filter: blur(24px);
+      box-shadow: 0 8px 28px rgba(16, 16, 18, 0.1);
+    }
+
+    .brand {
+      font-family: var(--font-display);
+      font-size: 15px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      font-weight: 400;
+      color: rgba(20, 20, 22, 0.9);
+    }
+
+    .nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: var(--space-1);
+    }
+
+    .chip {
+      appearance: none;
+      text-decoration: none;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius-pill);
+      color: var(--muted);
+      padding: 8px 14px;
+      font-size: 12px;
+      line-height: 1;
+      transition: transform 180ms var(--ease-fluid), border-color 180ms var(--ease-fluid), color 180ms var(--ease-fluid), background 180ms var(--ease-fluid);
+    }
+
+    .chip:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(155deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.7) 48%, rgba(246, 246, 246, 0.8) 100%);
+      backdrop-filter: blur(28px);
+      box-shadow: var(--shadow-lift), inset 0 1px 1px rgba(255, 255, 255, 0.92);
+      padding: clamp(30px, 4.5vw, 62px);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -80px;
+      top: -100px;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, rgba(170, 170, 178, 0.32), transparent 65%);
+      filter: blur(10px);
+      pointer-events: none;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 980px;
+      font-family: var(--font-display);
+      font-size: clamp(40px, 7vw, 86px);
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      font-weight: 400;
+      text-wrap: balance;
+    }
+
+    .hero-subtitle {
+      margin: var(--space-4) 0 0;
+      max-width: 760px;
+      font-size: clamp(14px, 1.25vw, 18px);
+      line-height: 1.75;
+      color: var(--muted);
+      text-wrap: pretty;
+    }
+
+    .hero-metadata {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      margin-top: var(--space-5);
+    }
+
+    .badge {
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.7);
+      padding: 7px 12px;
+      font-family: var(--font-display);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #222228;
+      font-weight: 400;
+    }
+
+    section {
+      margin-top: var(--space-7);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-4);
+    }
+
+    h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(26px, 3.6vw, 44px);
+      letter-spacing: -0.01em;
+      line-height: 1;
+      font-weight: 400;
+    }
+
+    .section-note {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .grid {
+      display: grid;
+      gap: var(--space-3);
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .panel {
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: var(--glass);
+      backdrop-filter: blur(24px);
+      box-shadow: var(--shadow-soft), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+      padding: var(--space-4);
+      transition: transform 260ms var(--ease-fluid), box-shadow 260ms var(--ease-fluid), border-color 260ms var(--ease-fluid);
+    }
+
+    .panel:hover {
+      transform: translateY(-2px);
+      border-color: var(--line-strong);
+      box-shadow: 0 20px 44px rgba(15, 15, 16, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.92);
+    }
+
+    .eyebrow {
+      font-family: var(--font-display);
+      font-size: 11px;
+      line-height: 1;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--soft);
+      margin-bottom: 8px;
+      font-weight: 400;
+    }
+
+    .panel h3 {
+      margin: 0;
+      font-size: clamp(17px, 1.5vw, 22px);
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+      font-weight: 500;
+      color: #1f1f21;
+    }
+
+    .panel p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .token-list,
+    .check-list {
+      list-style: none;
+      padding: 0;
+      margin: 12px 0 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .token-list li,
+    .check-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(28, 28, 30, 0.1);
+      background: rgba(255, 255, 255, 0.62);
+      font-size: 13px;
+      color: #232327;
+    }
+
+    .token-list code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #3a3a40;
+      background: rgba(243, 243, 245, 0.9);
+      border: 1px solid rgba(30, 30, 34, 0.1);
+      border-radius: 8px;
+      padding: 2px 6px;
+    }
+
+    .color-swatch {
+      width: 100%;
+      height: 76px;
+      border-radius: 16px;
+      border: 1px solid rgba(20, 20, 22, 0.12);
+      margin-top: 10px;
+    }
+
+    .layout-demo {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .layout-row {
+      display: grid;
+      gap: 8px;
+    }
+
+    .layout-row.desktop {
+      grid-template-columns: 2fr 1fr 1fr;
+    }
+
+    .layout-row.tablet {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .layout-row.mobile {
+      grid-template-columns: 1fr;
+    }
+
+    .layout-cell {
+      min-height: 42px;
+      border-radius: 12px;
+      border: 1px solid rgba(20, 20, 22, 0.12);
+      background: rgba(255, 255, 255, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4b4b50;
+      font-size: 12px;
+    }
+
+    .cta {
+      margin-top: var(--space-8);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      border-radius: 26px;
+      border: 1px solid var(--line);
+      padding: var(--space-4);
+      background: var(--glass-strong);
+      backdrop-filter: blur(26px);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .cta strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: clamp(20px, 2.8vw, 34px);
+      letter-spacing: -0.01em;
+      line-height: 1;
+      font-weight: 400;
+    }
+
+    .cta span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+      max-width: 740px;
+    }
+
+    .cta-links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .cta-links a {
+      text-decoration: none;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--line);
+      color: #2a2a2f;
+      background: rgba(255, 255, 255, 0.72);
+      padding: 10px 14px;
+      font-size: 13px;
+      transition: all 180ms var(--ease-fluid);
+    }
+
+    .cta-links a:hover {
+      border-color: var(--line-strong);
+      background: #fff;
+      transform: translateY(-1px);
+    }
+
+    .refs {
+      margin-top: var(--space-5);
+      display: grid;
+      gap: 8px;
+    }
+
+    .refs a {
+      color: #2b2b31;
+      text-decoration: none;
+      border-radius: 10px;
+      border: 1px solid rgba(30, 30, 35, 0.11);
+      background: rgba(255, 255, 255, 0.67);
+      padding: 10px 12px;
+      font-size: 13px;
+      transition: 160ms var(--ease-fluid);
+    }
+
+    .refs a:hover {
+      border-color: rgba(30, 30, 35, 0.22);
+      background: #fff;
+    }
+
+    @media (max-width: 1200px) {
+      .grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 900px) {
+      .grid-3,
+      .grid-2,
+      .grid-4 {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        position: static;
+      }
+
+      .nav {
+        justify-content: flex-start;
+      }
+
+      .hero {
+        padding: 26px;
+      }
+
+      .layout-row.desktop,
+      .layout-row.tablet {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">Intelligent Design System</div>
+      <nav class="nav" aria-label="Design guideline sections">
+        <a class="chip" href="#principles">Principles</a>
+        <a class="chip" href="#tokens">Tokens</a>
+        <a class="chip" href="#components">Components</a>
+        <a class="chip" href="#layout">Layout</a>
+        <a class="chip" href="#accessibility">Accessibility</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Design Guidelines</h1>
+      <p class="hero-subtitle">
+        Calm Futurism for agentic products: mono palette, liquid glass depth, predictable structure, and disciplined readability.
+        This page is the single source of truth for UI decisions across ensemble, playground, and future modules.
+      </p>
+      <div class="hero-metadata">
+        <span class="badge">Monochrome Liquid</span>
+        <span class="badge">Roboto Body</span>
+        <span class="badge">Special Gothic Display</span>
+        <span class="badge">8px Spacing Grid</span>
+      </div>
+    </section>
+
+    <section id="principles">
+      <div class="section-head">
+        <h2>Core Principles</h2>
+        <p class="section-note">Make every screen feel quiet, precise, and operational. Visual beauty serves decision speed, not decoration.</p>
+      </div>
+      <div class="grid grid-4">
+        <article class="panel">
+          <div class="eyebrow">P1</div>
+          <h3>Hierarchy First</h3>
+          <p>One dominant focal action per viewport. Secondary actions become chips, tertiary actions become text links.</p>
+        </article>
+        <article class="panel">
+          <div class="eyebrow">P2</div>
+          <h3>Contrast by Layers</h3>
+          <p>Use density and blur depth before adding color. Keep semantic colors only for critical status and alerts.</p>
+        </article>
+        <article class="panel">
+          <div class="eyebrow">P3</div>
+          <h3>Rhythm over Noise</h3>
+          <p>Maintain strict spacing cadence. Prefer repeated panel templates to reduce visual switching cost.</p>
+        </article>
+        <article class="panel">
+          <div class="eyebrow">P4</div>
+          <h3>Readable Always</h3>
+          <p>Minimum 14px body text, stable line-height, and compressed but scannable rows for high-density dashboards.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="tokens">
+      <div class="section-head">
+        <h2>Design Tokens</h2>
+        <p class="section-note">Tokens are platform-neutral. Keep names and values synced across CSS variables, docs, and component defaults.</p>
+      </div>
+      <div class="grid grid-2">
+        <article class="panel">
+          <div class="eyebrow">Color System</div>
+          <h3>Monochrome Layers</h3>
+          <div class="color-swatch" style="background:#fafafa"></div>
+          <ul class="token-list">
+            <li><span>Background</span><code>#FAFAFA</code></li>
+            <li><span>Surface</span><code>#FFFFFF</code></li>
+            <li><span>Glass</span><code>rgba(255,255,255,0.64)</code></li>
+            <li><span>Border</span><code>rgba(34,34,34,0.12)</code></li>
+            <li><span>Text / Muted</span><code>#1D1D1F / #6E6E73</code></li>
+          </ul>
+        </article>
+
+        <article class="panel">
+          <div class="eyebrow">Typography</div>
+          <h3>Display + Body Pairing</h3>
+          <ul class="token-list">
+            <li><span>Display</span><code>Special Gothic Condensed One</code></li>
+            <li><span>Body</span><code>Roboto 400</code></li>
+            <li><span>Small Text</span><code>12–13px</code></li>
+            <li><span>Body Text</span><code>14–16px</code></li>
+            <li><span>Panel Titles</span><code>17–22px</code></li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="grid grid-3" style="margin-top:14px;">
+        <article class="panel">
+          <div class="eyebrow">Spacing</div>
+          <h3>8px Grid</h3>
+          <ul class="token-list">
+            <li><span>Unit</span><code>8px</code></li>
+            <li><span>Panel Padding</span><code>16px / 24px</code></li>
+            <li><span>Row Gap</span><code>6px / 8px</code></li>
+            <li><span>Section Gap</span><code>32px / 40px</code></li>
+          </ul>
+        </article>
+        <article class="panel">
+          <div class="eyebrow">Radius</div>
+          <h3>Soft Geometry</h3>
+          <ul class="token-list">
+            <li><span>Small</span><code>8–12px</code></li>
+            <li><span>Card</span><code>24px</code></li>
+            <li><span>Panel</span><code>30–32px</code></li>
+            <li><span>Capsule</span><code>999px</code></li>
+          </ul>
+        </article>
+        <article class="panel">
+          <div class="eyebrow">Motion</div>
+          <h3>Fluid, Not Bouncy</h3>
+          <ul class="token-list">
+            <li><span>Micro</span><code>80ms</code></li>
+            <li><span>Fast</span><code>120ms</code></li>
+            <li><span>Normal</span><code>180ms</code></li>
+            <li><span>Panel Lift</span><code>260–320ms</code></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="components">
+      <div class="section-head">
+        <h2>Component Rules</h2>
+        <p class="section-note">Every component has one visual purpose. Keep states obvious and content density controlled.</p>
+      </div>
+      <div class="grid grid-3">
+        <article class="panel">
+          <div class="eyebrow">Buttons</div>
+          <h3>Pill, Neutral, Subtle Lift</h3>
+          <ul class="check-list">
+            <li><span>Corner style</span><strong>Capsule / 16px</strong></li>
+            <li><span>Weight</span><strong>Roboto 400</strong></li>
+            <li><span>Hover</span><strong>+1px lift only</strong></li>
+            <li><span>Color</span><strong>Gray scale</strong></li>
+          </ul>
+        </article>
+        <article class="panel">
+          <div class="eyebrow">Panels</div>
+          <h3>Glass Cards with Depth</h3>
+          <ul class="check-list">
+            <li><span>Backdrop blur</span><strong>20–30px</strong></li>
+            <li><span>Border</span><strong>1px subtle line</strong></li>
+            <li><span>Shadow</span><strong>Ambient soft</strong></li>
+            <li><span>Density</span><strong>Compact rows</strong></li>
+          </ul>
+        </article>
+        <article class="panel">
+          <div class="eyebrow">Inputs</div>
+          <h3>Quiet Focus States</h3>
+          <ul class="check-list">
+            <li><span>Default</span><strong>Transparent white</strong></li>
+            <li><span>Focus ring</span><strong>Gray glow</strong></li>
+            <li><span>Text size</span><strong>14px</strong></li>
+            <li><span>Interaction</span><strong>No jump</strong></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="layout">
+      <div class="section-head">
+        <h2>Layout System</h2>
+        <p class="section-note">Start desktop-first for operation dashboards, then collapse into tablet/mobile with preserved task hierarchy.</p>
+      </div>
+      <div class="grid grid-2">
+        <article class="panel">
+          <div class="eyebrow">Responsive Blueprint</div>
+          <h3>4-Column Operations Grid</h3>
+          <p>Desktop uses four vertical rails with explicit responsibilities. Tablet becomes two rails. Mobile stacks by task criticality.</p>
+          <div class="layout-demo">
+            <div class="layout-row desktop">
+              <div class="layout-cell">Primary Ops</div>
+              <div class="layout-cell">Conversation</div>
+              <div class="layout-cell">Context</div>
+            </div>
+            <div class="layout-row tablet">
+              <div class="layout-cell">Top Priority</div>
+              <div class="layout-cell">Secondary</div>
+            </div>
+            <div class="layout-row mobile">
+              <div class="layout-cell">Single Scroll Stack</div>
+            </div>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="eyebrow">Density Rules</div>
+          <h3>Compact, Scannable, Stable</h3>
+          <ul class="check-list">
+            <li><span>Panel title height</span><strong>32–40px max</strong></li>
+            <li><span>Content row gap</span><strong>4–8px</strong></li>
+            <li><span>Model names</span><strong>Single line</strong></li>
+            <li><span>Scrolling panels</span><strong>Always visible</strong></li>
+            <li><span>Error display</span><strong>Bottom-left global</strong></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="accessibility">
+      <div class="section-head">
+        <h2>Accessibility & QA</h2>
+        <p class="section-note">Beautiful systems still fail without readability, keyboard safety, and consistent behavior under stress.</p>
+      </div>
+      <div class="grid grid-2">
+        <article class="panel">
+          <div class="eyebrow">WCAG-aligned Checks</div>
+          <h3>Must Pass Before Shipping</h3>
+          <ul class="check-list">
+            <li><span>Text contrast</span><strong>≥ 4.5:1 normal</strong></li>
+            <li><span>Focusable controls</span><strong>Visible ring always</strong></li>
+            <li><span>Touch targets</span><strong>≥ 44 × 44</strong></li>
+            <li><span>Keyboard trap</span><strong>Zero allowed</strong></li>
+            <li><span>Error message</span><strong>Clear + actionable</strong></li>
+          </ul>
+        </article>
+        <article class="panel">
+          <div class="eyebrow">Operational QA</div>
+          <h3>Release Gate</h3>
+          <ul class="check-list">
+            <li><span>Desktop 1440</span><strong>No overflow</strong></li>
+            <li><span>Laptop 1280</span><strong>No clipped panels</strong></li>
+            <li><span>Mobile 390</span><strong>No blocked inputs</strong></li>
+            <li><span>Latency state</span><strong>Skeleton + timeout</strong></li>
+            <li><span>Live data</span><strong>No stale token panel</strong></li>
+          </ul>
+        </article>
+      </div>
+
+      <article class="panel" style="margin-top:14px;">
+        <div class="eyebrow">Research Sources</div>
+        <h3>External References Used for This Guideline</h3>
+        <div class="refs">
+          <a href="https://www.nngroup.com/articles/principles-visual-design/" target="_blank" rel="noreferrer noopener">Nielsen Norman Group · Principles of Visual Design</a>
+          <a href="https://m3.material.io/" target="_blank" rel="noreferrer noopener">Google Material Design 3</a>
+          <a href="https://developer.apple.com/design/human-interface-guidelines" target="_blank" rel="noreferrer noopener">Apple Human Interface Guidelines</a>
+          <a href="https://fluent2.microsoft.design/" target="_blank" rel="noreferrer noopener">Microsoft Fluent 2</a>
+          <a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noreferrer noopener">W3C WCAG 2.2</a>
+          <a href="https://lawsofux.com/" target="_blank" rel="noreferrer noopener">Laws of UX</a>
+          <a href="https://dribbble.com/" target="_blank" rel="noreferrer noopener">Dribbble (visual exploration)</a>
+        </div>
+      </article>
+    </section>
+
+    <footer class="cta">
+      <div>
+        <strong>Deploy Consistent, Ship Faster.</strong>
+        <span>Use this guideline as the baseline for every new product surface: ensemble, playground, memory tools, ops dashboards, and future agent modules.</span>
+      </div>
+      <div class="cta-links">
+        <a href="/ensemble/">Open Ensemble</a>
+        <a href="/playground/">Open Playground</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
