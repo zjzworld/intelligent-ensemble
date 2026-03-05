@@ -183,6 +183,27 @@ function patchResult(name, patch) {
   state.resultsByName.set(name, { ...current, ...patch });
 }
 
+function applyBatchResults(data) {
+  const byName = new Map((Array.isArray(data?.results) ? data.results : []).map((row) => [String(row.name || ""), row]));
+  state.resultsByName = new Map(
+    state.selected.map((name) => {
+      const row = byName.get(name);
+      if (!row) return [name, { ...emptyResult(name), status: "failed", ok: false, error: "No response." }];
+      return [
+        name,
+        {
+          ...emptyResult(name),
+          ...row,
+          status: row?.ok ? "done" : "failed",
+          ok: !!row?.ok
+        }
+      ];
+    })
+  );
+  renderResults(state.resultsByName);
+  setStatus(`Completed in ${Number(data?.elapsedMs || 0)} ms`);
+}
+
 function processSseFrame(frame) {
   const lines = String(frame || "").split(/\r?\n/);
   let event = "message";
@@ -318,23 +339,48 @@ async function runPlayground() {
 
     const contentType = String(resp.headers.get("content-type") || "").toLowerCase();
     if (contentType.includes("text/event-stream")) {
-      await consumeEventStream(resp);
-      if (!state.streamDone) {
-        setStatus("Completed");
+      try {
+        await consumeEventStream(resp);
+        if (!state.streamDone) {
+          setStatus("Completed");
+        }
+      } catch {
+        setStatus("Stream interrupted, retrying in batch mode...");
+        const fallbackResp = await fetch("/api/playground/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt,
+            models: [...state.selected],
+            stream: false
+          })
+        });
+        const fallbackData = await fallbackResp.json().catch(() => ({}));
+        if (!fallbackResp.ok || !fallbackData?.ok) {
+          throw new Error(fallbackData?.error || `HTTP ${fallbackResp.status}`);
+        }
+        applyBatchResults(fallbackData);
       }
     } else {
       const data = await resp.json().catch(() => ({}));
       if (!data?.ok) {
         throw new Error(data?.error || "run failed");
       }
-      const byName = new Map((Array.isArray(data.results) ? data.results : []).map((row) => [String(row.name || ""), row]));
-      state.resultsByName = new Map(state.selected.map((name) => [name, byName.get(name) || emptyResult(name)]));
-      renderResults(state.resultsByName);
-      setStatus(`Completed in ${Number(data.elapsedMs || 0)} ms`);
+      applyBatchResults(data);
     }
   } catch (error) {
-    setStatus(`Error: ${String(error?.message || error)}`);
-    renderResultSkeletons();
+    const errorText = String(error?.message || error);
+    for (const name of state.selected) {
+      const row = state.resultsByName.get(name) || emptyResult(name);
+      if (row.status === "done") continue;
+      patchResult(name, {
+        status: "failed",
+        ok: false,
+        error: row.error || errorText
+      });
+    }
+    setStatus(`Error: ${errorText}`);
+    renderResults(state.resultsByName);
   } finally {
     state.running = false;
     el.runBtn.disabled = false;
