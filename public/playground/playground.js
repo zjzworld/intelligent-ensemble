@@ -204,6 +204,23 @@ function applyBatchResults(data) {
   setStatus(`Completed in ${Number(data?.elapsedMs || 0)} ms`);
 }
 
+async function runBatchFallback(prompt) {
+  const fallbackResp = await fetch("/api/playground/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      models: [...state.selected],
+      stream: false
+    })
+  });
+  const fallbackData = await fallbackResp.json().catch(() => ({}));
+  if (!fallbackResp.ok || !fallbackData?.ok) {
+    throw new Error(fallbackData?.error || `HTTP ${fallbackResp.status}`);
+  }
+  applyBatchResults(fallbackData);
+}
+
 function processSseFrame(frame) {
   const lines = String(frame || "").split(/\r?\n/);
   let event = "message";
@@ -346,20 +363,7 @@ async function runPlayground() {
         }
       } catch {
         setStatus("Stream interrupted, retrying in batch mode...");
-        const fallbackResp = await fetch("/api/playground/run", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt,
-            models: [...state.selected],
-            stream: false
-          })
-        });
-        const fallbackData = await fallbackResp.json().catch(() => ({}));
-        if (!fallbackResp.ok || !fallbackData?.ok) {
-          throw new Error(fallbackData?.error || `HTTP ${fallbackResp.status}`);
-        }
-        applyBatchResults(fallbackData);
+        await runBatchFallback(prompt);
       }
     } else {
       const data = await resp.json().catch(() => ({}));
@@ -370,6 +374,28 @@ async function runPlayground() {
     }
   } catch (error) {
     const errorText = String(error?.message || error);
+    const canRetryBatch = /load failed|networkerror|failed to fetch|fetch failed/i.test(errorText);
+    if (canRetryBatch) {
+      try {
+        setStatus("Primary request failed, retrying in batch mode...");
+        await runBatchFallback(prompt);
+        return;
+      } catch (fallbackError) {
+        const finalText = String(fallbackError?.message || fallbackError);
+        for (const name of state.selected) {
+          const row = state.resultsByName.get(name) || emptyResult(name);
+          if (row.status === "done") continue;
+          patchResult(name, {
+            status: "failed",
+            ok: false,
+            error: row.error || finalText
+          });
+        }
+        setStatus(`Error: ${finalText}`);
+        renderResults(state.resultsByName);
+        return;
+      }
+    }
     for (const name of state.selected) {
       const row = state.resultsByName.get(name) || emptyResult(name);
       if (row.status === "done") continue;
