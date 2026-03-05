@@ -1,4 +1,4 @@
-const DEFAULT_PASSWORD = "592909";
+const DEFAULT_PASSWORD = "592509";
 const DEFAULT_AUTH_SECRET = "intelligent-ensemble-auth-secret";
 const AUTH_TTL_MS = 12 * 60 * 60 * 1000;
 const MODEL_CACHE_TTL_MS = 60 * 1000;

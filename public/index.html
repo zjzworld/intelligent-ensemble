@@ -66,7 +66,6 @@
           <section class="panel agent-panel">
             <div class="panel-head compact">
               <h2 id="agentTitle"></h2>
-              <span id="agentHint" class="panel-hint"></span>
             </div>
             <div class="table-scroll">
               <table>
@@ -151,14 +150,12 @@
             <div class="panel-head compact">
               <h2 id="projectTitle"></h2>
             </div>
-            <div id="projectSummary" class="panel-note"></div>
             <div id="projectList" class="project-list"></div>
           </section>
 
           <section class="panel workplace-panel">
             <div class="panel-head compact">
               <h2 id="workplaceTitle"></h2>
-              <span id="workplaceMeta" class="panel-hint"></span>
             </div>
             <div id="workplaceFeed" class="workplace-feed"></div>
           </section>
@@ -166,7 +163,6 @@
           <section class="panel mcp-panel">
             <div class="panel-head compact">
               <h2 id="mcpTitle"></h2>
-              <span id="mcpHint" class="panel-hint"></span>
             </div>
             <div class="table-scroll">
               <table>
@@ -184,10 +180,8 @@
         </section>
       </main>
 
-      <footer class="foot">
-        <span id="errorCode">-</span>
-        <span id="updatedAt">-</span>
-      </footer>
+      <span id="updatedAt" class="hidden">-</span>
+      <span id="errorCode" class="floating-error">-</span>
     </div>
 
     <script src="/app.js"></script>

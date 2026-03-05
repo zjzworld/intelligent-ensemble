@@ -15,8 +15,8 @@ const UI = {
   projectTitle: "Project",
   workplaceTitle: "Workplace",
   thModel: "Model",
-  thTokenDaily: "Daily Tokens",
-  thTokenTotal: "Total Tokens",
+  thTokenDaily: "Daily",
+  thTokenTotal: "Total",
   thAgentName: "Name",
   thAgentCharacter: "Character",
   thAgentModel: "Model",
@@ -36,6 +36,18 @@ const UI = {
 };
 
 const API_BASE = "/api";
+const TOKEN_MODEL_ORDER = [
+  "GPT-5.3-Codex",
+  "Claude-Opus-4.6",
+  "Minimax-M2.5",
+  "Kimi-K2.5",
+  "Glm-5",
+  "Qwen3.5-plus",
+  "Qwen3-max",
+  "Qwen3-coder-next",
+  "Qwen3-coder-plus",
+  "Glm-4.7"
+];
 
 function apiUrl(path) {
   const clean = String(path || "").startsWith("/") ? String(path) : `/${String(path || "")}`;
@@ -83,14 +95,12 @@ const el = {
   memoryTierRows: document.getElementById("memoryTierRows"),
   memoryVectorInfo: document.getElementById("memoryVectorInfo"),
   agentTitle: document.getElementById("agentTitle"),
-  agentHint: document.getElementById("agentHint"),
   thAgentName: document.getElementById("thAgentName"),
   thAgentCharacter: document.getElementById("thAgentCharacter"),
   thAgentModel: document.getElementById("thAgentModel"),
   thAgentStatus: document.getElementById("thAgentStatus"),
   agentTable: document.getElementById("agentTable"),
   mcpTitle: document.getElementById("mcpTitle"),
-  mcpHint: document.getElementById("mcpHint"),
   thMcpApp: document.getElementById("thMcpApp"),
   thMcpAgent: document.getElementById("thMcpAgent"),
   thMcpMethod: document.getElementById("thMcpMethod"),
@@ -105,10 +115,8 @@ const el = {
   thTaskCadence: document.getElementById("thTaskCadence"),
   taskTable: document.getElementById("taskTable"),
   projectTitle: document.getElementById("projectTitle"),
-  projectSummary: document.getElementById("projectSummary"),
   projectList: document.getElementById("projectList"),
   workplaceTitle: document.getElementById("workplaceTitle"),
-  workplaceMeta: document.getElementById("workplaceMeta"),
   workplaceFeed: document.getElementById("workplaceFeed")
 };
 el.unlockDigitInputs = Array.from(document.querySelectorAll(".unlock-digit"));
@@ -135,13 +143,15 @@ function normalizeModelDisplay(raw) {
   if (!text) return "-";
   const core = text.includes("::") ? text.split("::").slice(1).join("::") : text.split("·")[0].trim();
   const lower = core.toLowerCase();
-  if (lower.includes("gpt-5.3-codex")) return "GPT-5.3-Codex";
-  if (lower.includes("claude-opus-4.6")) return "Claude-Opus-4.6";
+  if (lower.includes("delivery-mirror")) return "delivery-mirror";
+  if (lower.includes("gpt-5.3-codex") || lower.includes("gpt-5-codex") || lower.includes("codex")) return "GPT-5.3-Codex";
+  if (lower.includes("claude-opus-4.6") || lower.includes("claude opus 4.6") || lower.includes("claude-opus-46"))
+    return "Claude-Opus-4.6";
   if (lower.includes("qwen3.5-plus")) return "Qwen3.5-plus";
-  if (lower.includes("qwen3-max-2026-01-23")) return "Qwen3-max-2026-01-23";
+  if (lower.includes("qwen3-max")) return "Qwen3-max";
   if (lower.includes("qwen3-coder-next")) return "Qwen3-coder-next";
   if (lower.includes("qwen3-coder-plus")) return "Qwen3-coder-plus";
-  if (lower.includes("minimax-m2.5")) return "Minimax-M2.5";
+  if (lower.includes("minimax-m2.5") || lower.includes("minimax m2.5")) return "Minimax-M2.5";
   if (lower.includes("glm-5")) return "Glm-5";
   if (lower.includes("glm-4.7")) return "Glm-4.7";
   if (lower.includes("kimi-k2.5")) return "Kimi-K2.5";
@@ -297,9 +307,7 @@ function applyLabels() {
     '<div class="meta-item"><span class="meta-name">短句交接</span><span class="meta-detail">交接语句随机短句池</span></div>';
   el.memoryTitle.textContent = t("memoryTitle");
   el.agentTitle.textContent = t("agentTitle");
-  el.agentHint.textContent = t("agentHint");
   el.mcpTitle.textContent = t("mcpTitle");
-  el.mcpHint.textContent = t("mcpHint");
   el.tokenTitle.textContent = t("tokenTitle");
   el.taskTitle.textContent = t("taskTitle");
   el.projectTitle.textContent = t("projectTitle");
@@ -366,13 +374,13 @@ function renderMemory(memory) {
 }
 
 function renderTokens(tokens) {
-  if (!tokens || tokens.length === 0) {
-    el.tokenTable.innerHTML = `<tr><td colspan="3">${t("noData")}</td></tr>`;
-    return;
-  }
-  const merged = new Map();
+  const merged = new Map(
+    TOKEN_MODEL_ORDER.map((name) => [name, { model: name, requests: 0, tokensDaily: 0, tokensTotal: 0 }])
+  );
+
   for (const row of tokens) {
     const modelName = normalizeModelDisplay(row.model);
+    if (!modelName || modelName === "-" || /delivery-mirror/i.test(modelName)) continue;
     if (!merged.has(modelName)) {
       merged.set(modelName, { model: modelName, requests: 0, tokensDaily: 0, tokensTotal: 0 });
     }
@@ -381,7 +389,19 @@ function renderTokens(tokens) {
     target.tokensDaily += Number(row.tokensDaily || 0);
     target.tokensTotal += Number(row.tokensTotal || 0);
   }
-  const rows = [...merged.values()].sort((a, b) => b.tokensTotal - a.tokensTotal || b.requests - a.requests);
+  const orderIndex = new Map(TOKEN_MODEL_ORDER.map((name, index) => [name, index]));
+  const rows = [...merged.values()].sort((a, b) => {
+    const ai = orderIndex.has(a.model) ? orderIndex.get(a.model) : Number.MAX_SAFE_INTEGER;
+    const bi = orderIndex.has(b.model) ? orderIndex.get(b.model) : Number.MAX_SAFE_INTEGER;
+    if (ai !== bi) return ai - bi;
+    return String(a.model || "").localeCompare(String(b.model || ""), undefined, { sensitivity: "base" });
+  });
+
+  if (!rows.length) {
+    el.tokenTable.innerHTML = `<tr><td colspan="3">${t("noData")}</td></tr>`;
+    return;
+  }
+
   el.tokenTable.innerHTML = rows
     .map(
       (row) =>
@@ -403,9 +423,6 @@ function renderTasks(tasks) {
 
 function renderProjects(projects) {
   const rows = (projects?.rows || []).slice(0, 5);
-  const completed = Number(projects?.completed || 0);
-  const total = Number(projects?.total || rows.length);
-  el.projectSummary.textContent = `Completed ${completed} / Total ${total}`;
   if (rows.length === 0) {
     el.projectList.innerHTML = `<div class="project-item">${t("noData")}</div>`;
     return;
@@ -415,8 +432,7 @@ function renderProjects(projects) {
       (row) =>
         `<div class="project-item">
           <div><b>${row.name}</b></div>
-          <div class="meta">${row.status || "-"} · ${formatTime(row.updatedAt)}</div>
-          <div class="progress"><i style="width:${Math.max(0, Math.min(100, Number(row.progress || 0)))}%"></i></div>
+          <div class="meta">${row.status || "-"}</div>
         </div>`
     )
     .join("");
@@ -445,7 +461,7 @@ function renderAgentStatus(payload) {
   }
   const defaultModelByName = {
     Karina: "Qwen3.5-plus",
-    Goeun: "Qwen3-max-2026-01-23",
+    Goeun: "Qwen3-max",
     Suzy: "Qwen3-coder-plus",
     Jisoo: "Qwen3-coder-next"
   };
@@ -497,7 +513,6 @@ function renderSummary(data) {
 function renderWorkplace(data) {
   state.workplace = data;
   const rows = data?.rows || [];
-  el.workplaceMeta.textContent = `since ${formatTime(data.startedAt)} ｜ ${rows.length} rows`;
 
   const atBottom =
     el.workplaceFeed.scrollHeight - el.workplaceFeed.scrollTop - el.workplaceFeed.clientHeight < 20;
