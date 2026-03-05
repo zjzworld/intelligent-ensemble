@@ -184,7 +184,21 @@ async function ensureSqliteReady(state, env) {
       source TEXT NOT NULL DEFAULT 'local',
       updated_at TEXT NOT NULL
     )`,
-    "CREATE INDEX IF NOT EXISTS idx_token_local_rows_updated ON token_local_rows(updated_at DESC)"
+    "CREATE INDEX IF NOT EXISTS idx_token_local_rows_updated ON token_local_rows(updated_at DESC)",
+    `CREATE TABLE IF NOT EXISTS panel_cron_tasks (
+      id TEXT PRIMARY KEY,
+      content TEXT NOT NULL UNIQUE,
+      cadence TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_panel_cron_tasks_updated ON panel_cron_tasks(updated_at DESC)",
+    `CREATE TABLE IF NOT EXISTS panel_projects (
+      name TEXT PRIMARY KEY,
+      progress INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'in_progress',
+      updated_at TEXT NOT NULL
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_panel_projects_updated ON panel_projects(updated_at DESC)"
   ];
 
   try {
@@ -314,6 +328,84 @@ async function readSyncedTokenRowsFromDb(db) {
     requests: Number(row.requests || 0) || 0,
     tokensDaily: Number(row.tokens_daily || 0) || 0,
     tokensTotal: Number(row.tokens_total || 0) || 0
+  }));
+}
+
+async function persistCronPanelRow(db, row) {
+  if (!db || !row?.content) return;
+  await db
+    .prepare(
+      `INSERT INTO panel_cron_tasks (id, content, cadence, updated_at)
+      VALUES (?1, ?2, ?3, ?4)
+      ON CONFLICT(content) DO UPDATE SET
+        cadence = excluded.cadence,
+        updated_at = excluded.updated_at`
+    )
+    .bind(
+      crypto.randomUUID(),
+      String(row.content || "").trim(),
+      String(row.cadence || "On demand"),
+      String(row.updatedAt || nowIso())
+    )
+    .run();
+}
+
+async function readCronPanelRowsFromDb(db, limit = 20) {
+  if (!db) return [];
+  const maxRows = Math.max(1, Math.min(100, Number(limit) || 20));
+  const { results } = await db
+    .prepare(
+      `SELECT content, cadence, updated_at
+      FROM panel_cron_tasks
+      ORDER BY updated_at DESC
+      LIMIT ?1`
+    )
+    .bind(maxRows)
+    .all();
+  return (Array.isArray(results) ? results : []).map((row) => ({
+    content: String(row.content || "").trim(),
+    cadence: String(row.cadence || "On demand"),
+    updatedAt: String(row.updated_at || nowIso())
+  }));
+}
+
+async function persistProjectPanelRow(db, row) {
+  if (!db || !row?.name) return;
+  await db
+    .prepare(
+      `INSERT INTO panel_projects (name, progress, status, updated_at)
+      VALUES (?1, ?2, ?3, ?4)
+      ON CONFLICT(name) DO UPDATE SET
+        progress = excluded.progress,
+        status = excluded.status,
+        updated_at = excluded.updated_at`
+    )
+    .bind(
+      String(row.name || "").trim(),
+      Math.max(0, Math.min(100, Number(row.progress || 0))),
+      String(row.status || "in_progress"),
+      String(row.updatedAt || nowIso())
+    )
+    .run();
+}
+
+async function readProjectPanelRowsFromDb(db, limit = 30) {
+  if (!db) return [];
+  const maxRows = Math.max(1, Math.min(120, Number(limit) || 30));
+  const { results } = await db
+    .prepare(
+      `SELECT name, progress, status, updated_at
+      FROM panel_projects
+      ORDER BY updated_at DESC
+      LIMIT ?1`
+    )
+    .bind(maxRows)
+    .all();
+  return (Array.isArray(results) ? results : []).map((row) => ({
+    name: String(row.name || "").trim(),
+    progress: Math.max(0, Math.min(100, Number(row.progress || 0))),
+    status: String(row.status || "in_progress"),
+    updatedAt: String(row.updated_at || nowIso())
   }));
 }
 
@@ -693,6 +785,22 @@ async function refreshSyncedTokenRows(state, env) {
         ? `${String(error?.message || error)}, fallback sqlite ${fallbackRows.length} rows`
         : String(error?.message || error)
     };
+  }
+}
+
+async function refreshPanelRowsFromDb(state, env) {
+  const db = await ensureSqliteReady(state, env);
+  if (!db) return;
+  try {
+    const [cronRows, projectRows] = await Promise.all([readCronPanelRowsFromDb(db, 20), readProjectPanelRowsFromDb(db, 30)]);
+    if (Array.isArray(cronRows) && cronRows.length) {
+      state.dynamicCronRows = cronRows;
+    }
+    if (Array.isArray(projectRows) && projectRows.length) {
+      state.dynamicProjectRows = projectRows;
+    }
+  } catch {
+    return;
   }
 }
 
@@ -1436,6 +1544,7 @@ export const onRequest = async (context) => {
     await refreshModelCatalog(state, env);
     await refreshTokenEventsFromDb(state, env);
     await refreshSyncedTokenRows(state, env);
+    await refreshPanelRowsFromDb(state, env);
     return json(buildSummary(state));
   }
 
@@ -1470,9 +1579,19 @@ export const onRequest = async (context) => {
 
       const board = classifyKarinaBoard(message);
       if (board === "cron") {
-        upsertCronRow(state, message, inferCronCadence(message));
+        const cronRow = { content: message, cadence: inferCronCadence(message), updatedAt: nowIso() };
+        upsertCronRow(state, cronRow.content, cronRow.cadence);
+        const db = await ensureSqliteReady(state, env);
+        if (db) {
+          await persistCronPanelRow(db, cronRow);
+        }
       } else {
-        upsertProjectRow(state, inferProjectMeta(message));
+        const projectRow = { ...inferProjectMeta(message), updatedAt: nowIso() };
+        upsertProjectRow(state, projectRow);
+        const db = await ensureSqliteReady(state, env);
+        if (db) {
+          await persistProjectPanelRow(db, projectRow);
+        }
       }
 
       const sent = await sendDiscordChannelMessage(env, message);
