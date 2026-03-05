@@ -204,23 +204,6 @@ function applyBatchResults(data) {
   setStatus(`Completed in ${Number(data?.elapsedMs || 0)} ms`);
 }
 
-async function runBatchFallback(prompt) {
-  const fallbackResp = await fetch("/api/playground/run", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt,
-      models: [...state.selected],
-      stream: false
-    })
-  });
-  const fallbackData = await fallbackResp.json().catch(() => ({}));
-  if (!fallbackResp.ok || !fallbackData?.ok) {
-    throw new Error(fallbackData?.error || `HTTP ${fallbackResp.status}`);
-  }
-  applyBatchResults(fallbackData);
-}
-
 function processSseFrame(frame) {
   const lines = String(frame || "").split(/\r?\n/);
   let event = "message";
@@ -356,46 +339,15 @@ async function runPlayground() {
 
     const contentType = String(resp.headers.get("content-type") || "").toLowerCase();
     if (contentType.includes("text/event-stream")) {
-      try {
-        await consumeEventStream(resp);
-        if (!state.streamDone) {
-          setStatus("Completed");
-        }
-      } catch {
-        setStatus("Stream interrupted, retrying in batch mode...");
-        await runBatchFallback(prompt);
+      await consumeEventStream(resp);
+      if (!state.streamDone) {
+        setStatus("Completed");
       }
     } else {
-      const data = await resp.json().catch(() => ({}));
-      if (!data?.ok) {
-        throw new Error(data?.error || "run failed");
-      }
-      applyBatchResults(data);
+      throw new Error("stream required but server returned non-stream response");
     }
   } catch (error) {
     const errorText = String(error?.message || error);
-    const canRetryBatch = /load failed|networkerror|failed to fetch|fetch failed/i.test(errorText);
-    if (canRetryBatch) {
-      try {
-        setStatus("Primary request failed, retrying in batch mode...");
-        await runBatchFallback(prompt);
-        return;
-      } catch (fallbackError) {
-        const finalText = String(fallbackError?.message || fallbackError);
-        for (const name of state.selected) {
-          const row = state.resultsByName.get(name) || emptyResult(name);
-          if (row.status === "done") continue;
-          patchResult(name, {
-            status: "failed",
-            ok: false,
-            error: row.error || finalText
-          });
-        }
-        setStatus(`Error: ${finalText}`);
-        renderResults(state.resultsByName);
-        return;
-      }
-    }
     for (const name of state.selected) {
       const row = state.resultsByName.get(name) || emptyResult(name);
       if (row.status === "done") continue;

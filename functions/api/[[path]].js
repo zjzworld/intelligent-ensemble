@@ -2195,40 +2195,6 @@ export const onRequest = async (context) => {
                     }
                   );
 
-                  if (!chat?.reply && row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
-                    usedModelId = "gpt-5-codex";
-                    send("model_info", {
-                      name: row.name,
-                      provider: row.provider,
-                      modelId: usedModelId,
-                      info: "fallback model switched"
-                    });
-                    chat = await callProviderChatStreamWithRetry(
-                      provider,
-                      usedModelId,
-                      prompt,
-                      (delta) => {
-                        send("model_delta", {
-                          name: row.name,
-                          provider: row.provider,
-                          modelId: usedModelId,
-                          delta: String(delta || "")
-                        });
-                      },
-                      {
-                        maxRetries: 1,
-                        onRetry: (retry) => {
-                          send("model_info", {
-                            name: row.name,
-                            provider: row.provider,
-                            modelId: usedModelId,
-                            info: `retry ${retry.attempt}/${retry.maxRetries} (${retry.delayMs}ms)`
-                          });
-                        }
-                      }
-                    );
-                  }
-
                   const ended = Date.now();
                   const usage = chat?.usage || estimateUsage(prompt, chat?.reply || "");
                   state.tokenEvents.push({
@@ -2256,70 +2222,6 @@ export const onRequest = async (context) => {
                     }
                   });
                 } catch (error) {
-                  if (row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
-                    try {
-                      usedModelId = "gpt-5-codex";
-                      send("model_info", {
-                        name: row.name,
-                        provider: row.provider,
-                        modelId: usedModelId,
-                        info: "fallback model switched"
-                      });
-                      const fallbackChat = await callProviderChatStreamWithRetry(
-                        provider,
-                        usedModelId,
-                        prompt,
-                        (delta) => {
-                          send("model_delta", {
-                            name: row.name,
-                            provider: row.provider,
-                            modelId: usedModelId,
-                            delta: String(delta || "")
-                          });
-                        },
-                        {
-                          maxRetries: 1,
-                          onRetry: (retry) => {
-                            send("model_info", {
-                              name: row.name,
-                              provider: row.provider,
-                              modelId: usedModelId,
-                              info: `retry ${retry.attempt}/${retry.maxRetries} (${retry.delayMs}ms)`
-                            });
-                          }
-                        }
-                      );
-                      const ended = Date.now();
-                      const usage = fallbackChat?.usage || estimateUsage(prompt, fallbackChat?.reply || "");
-                      state.tokenEvents.push({
-                        id: crypto.randomUUID(),
-                        ts: nowIso(),
-                        modelKey: makeModelKey(row.provider, usedModelId),
-                        modelLabel: row.name,
-                        totalTokens: Number(usage?.total || 0) || 0
-                      });
-                      if (state.tokenEvents.length > 5000) {
-                        state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
-                      }
-                      send("model_end", {
-                        name: row.name,
-                        provider: row.provider,
-                        modelId: usedModelId,
-                        ok: true,
-                        reply: String(fallbackChat?.reply || ""),
-                        latencyMs: Math.max(0, ended - started),
-                        usage: {
-                          input: Number(usage?.input || 0) || 0,
-                          output: Number(usage?.output || 0) || 0,
-                          total: Number(usage?.total || 0) || 0
-                        }
-                      });
-                      return;
-                    } catch {
-                      // ignore fallback error and keep original error output
-                    }
-                  }
-
                   send("model_end", {
                     name: row.name,
                     provider: row.provider,
@@ -2375,10 +2277,6 @@ export const onRequest = async (context) => {
         const started = Date.now();
         try {
           let chat = await callProviderChatWithRetry(provider, usedModelId, prompt, { maxRetries: 1 });
-          if (!chat?.reply && row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
-            usedModelId = "gpt-5-codex";
-            chat = await callProviderChatWithRetry(provider, usedModelId, prompt, { maxRetries: 1 });
-          }
           const ended = Date.now();
           const usage = chat?.usage || estimateUsage(prompt, chat?.reply || "");
 
@@ -2407,39 +2305,6 @@ export const onRequest = async (context) => {
             }
           };
         } catch (error) {
-          if (row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
-            try {
-              usedModelId = "gpt-5-codex";
-              const fallbackChat = await callProviderChatWithRetry(provider, usedModelId, prompt, { maxRetries: 1 });
-              const ended = Date.now();
-              const usage = fallbackChat?.usage || estimateUsage(prompt, fallbackChat?.reply || "");
-              state.tokenEvents.push({
-                id: crypto.randomUUID(),
-                ts: nowIso(),
-                modelKey: makeModelKey(row.provider, usedModelId),
-                modelLabel: row.name,
-                totalTokens: Number(usage?.total || 0) || 0
-              });
-              if (state.tokenEvents.length > 5000) {
-                state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
-              }
-              return {
-                name: row.name,
-                provider: row.provider,
-                modelId: usedModelId,
-                ok: true,
-                reply: String(fallbackChat?.reply || ""),
-                latencyMs: Math.max(0, ended - started),
-                usage: {
-                  input: Number(usage?.input || 0) || 0,
-                  output: Number(usage?.output || 0) || 0,
-                  total: Number(usage?.total || 0) || 0
-                }
-              };
-            } catch {
-              // keep original error output
-            }
-          }
           return {
             name: row.name,
             provider: row.provider,
