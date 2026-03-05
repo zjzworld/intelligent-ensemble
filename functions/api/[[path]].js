@@ -669,6 +669,7 @@ function providerConfig(env) {
     modelPath: String(env.CODEX_MODEL_PATH || DEFAULT_CODEX_MODEL_PATH).trim(),
     chatPath: DEFAULT_CODEX_CHAT_PATH,
     reasoningEffort: String(env.CODEX_REASONING_EFFORT || DEFAULT_CODEX_REASONING_EFFORT).trim() || DEFAULT_CODEX_REASONING_EFFORT,
+    disableResponseStorage: !/^(0|false|no|off)$/i.test(String(env.CODEX_DISABLE_RESPONSE_STORAGE || "true").trim()),
     fallbackModels: parseCsv(env.CODEX_MODELS).length ? parseCsv(env.CODEX_MODELS) : FALLBACK_CODEX_MODELS
   };
 
@@ -1474,12 +1475,14 @@ function buildProviderRequestBody(config, modelId, message, stream, chatPath) {
   const useResponsesApi = isCodex || /\/responses\b/i.test(String(chatPath || ""));
   if (isCodex) {
     const effort = String(config?.reasoningEffort || DEFAULT_CODEX_REASONING_EFFORT).trim() || DEFAULT_CODEX_REASONING_EFFORT;
+    const disableResponseStorage = config?.disableResponseStorage !== false;
     return {
       model: modelId,
       input: message,
       stream: !!stream,
       reasoning: { effort },
-      model_reasoning_effort: effort
+      model_reasoning_effort: effort,
+      disable_response_storage: disableResponseStorage
     };
   }
   if (useResponsesApi) {
