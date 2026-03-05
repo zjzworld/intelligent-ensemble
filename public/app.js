@@ -1,6 +1,6 @@
 const UI = {
-  chatboxTitle: "Karina Central Chat",
-  chatAgentBadge: "Karina - Orchestrator",
+  chatboxTitle: "Main Agent",
+  chatAgentBadge: "",
   chatPlaceholder: "Type your message…",
   hooksTitle: "Hooks",
   skillsTitle: "Skills",
@@ -164,6 +164,10 @@ function statusSymbol(ok) {
 
 function extractErrorCode(text) {
   const raw = String(text || "");
+  const lower = raw.toLowerCase();
+  if (lower.includes("dashboard locked")) return "DASHBOARD_LOCKED";
+  if (lower.includes("invalid password")) return "INVALID_PASSWORD";
+  if (lower.includes("failed to fetch") || lower.includes("network")) return "NETWORK_ERROR";
   const directCode = raw.match(/\b[A-Z][A-Z0-9_]{2,}\b/);
   if (directCode) return directCode[0];
   const httpCode = raw.match(/\bHTTP\s*(\d{3})\b/i);
@@ -289,6 +293,7 @@ function applyLabels() {
   document.documentElement.lang = "en";
   el.chatboxTitle.textContent = t("chatboxTitle");
   el.chatAgentBadge.textContent = t("chatAgentBadge");
+  el.chatAgentBadge.classList.toggle("hidden", !String(t("chatAgentBadge") || "").trim());
   el.chatboxInput.placeholder = t("chatPlaceholder");
   el.hooksTitle.textContent = t("hooksTitle");
   el.skillsTitle.textContent = t("skillsTitle");

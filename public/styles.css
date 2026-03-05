@@ -1,3 +1,19 @@
+@font-face {
+  font-family: "Roboto Local";
+  src: url("/fonts/Roboto-VariableFont_wdth,wght.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Special Gothic Local";
+  src: url("/fonts/SpecialGothicCondensedOne-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #fafafa;
   --surface: #ffffff;
@@ -10,9 +26,9 @@
   --text-soft: #3a3a3c;
   --text-muted: #8e8e93;
   --shadow-rgb: 17, 17, 17;
-  --font-display: "Special Gothic Condensed One", "Space Grotesk", sans-serif;
-  --font-alt: "Sora", "Space Grotesk", sans-serif;
-  --font-body: "Roboto", "SF Pro Text", "Segoe UI", sans-serif;
+  --font-display: "Special Gothic Local", "Roboto Local", sans-serif;
+  --font-alt: "Roboto Local", "SF Pro Text", "Segoe UI", sans-serif;
+  --font-body: "Roboto Local", "SF Pro Text", "Segoe UI", sans-serif;
 
   --radius-xs: 8px;
   --radius-sm: 12px;
@@ -132,7 +148,7 @@ body::before {
   text-align: center;
   font-family: var(--font-body);
   font-size: 19px;
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1;
   padding: 0;
 }
@@ -234,10 +250,11 @@ body::before {
   color: #303030;
   cursor: pointer;
   font-size: 11px;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 400;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #6e6e73;
   transition:
     color var(--motion-fast) var(--ease-fluid),
     border-color var(--motion-fast) var(--ease-fluid),
@@ -315,7 +332,7 @@ body::before {
   margin: 0;
   font-family: var(--font-body);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   line-height: 1.15;
@@ -399,10 +416,14 @@ body::before {
   border-radius: var(--radius-pill);
   border: 1px solid rgba(var(--border-rgb), 0.16);
   background: rgba(255, 255, 255, 0.54);
-  font-family: var(--font-alt);
+  font-family: var(--font-body);
   font-size: 10px;
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+.chat-agent-badge:empty {
+  display: none;
 }
 
 .chatbox-shell {
@@ -656,7 +677,7 @@ th {
   z-index: 1;
   background: rgba(255, 255, 255, 0.9);
   color: var(--text-secondary);
-  font-family: var(--font-alt);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 10px;
   letter-spacing: 0.02em;
