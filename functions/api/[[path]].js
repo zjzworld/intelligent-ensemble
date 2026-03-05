@@ -32,6 +32,10 @@ const FALLBACK_BAILIAN_MODELS = [
 ];
 
 const FALLBACK_CODEX_MODELS = ["gpt-5.3-codex", "gpt-5-codex"];
+const DEFAULT_CODEX_BASE_URL = "https://gmn.chuangzuoli.com";
+const DEFAULT_CODEX_MODEL_PATH = "/v1/models";
+const DEFAULT_CODEX_CHAT_PATH = "/v1/responses";
+const DEFAULT_CLAUDE_BASE_URL = "https://cursor.scihub.edu.kg/api";
 
 const PLAYGROUND_DEFAULT_MODELS = ["GPT-5.3-Codex", "Claude-Opus-4.6"];
 const PLAYGROUND_MODEL_CATALOG = [
@@ -100,6 +104,69 @@ function normalizeBaseUrl(value) {
   const text = String(value || "").trim();
   if (!text) return "";
   return text.replace(/\/+$/, "");
+}
+
+function safeHostname(rawUrl) {
+  const text = String(rawUrl || "").trim();
+  if (!text) return "";
+  try {
+    return String(new URL(text).hostname || "").toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function isOfficialLlmHost(rawUrl) {
+  const hostname = safeHostname(rawUrl);
+  if (!hostname) return false;
+  const officialHosts = [
+    "api.openai.com",
+    "openai.com",
+    "api.anthropic.com",
+    "anthropic.com"
+  ];
+  return officialHosts.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+}
+
+function validateProviderBase(config) {
+  if (!config?.baseUrl) return { ok: false, detail: "missing base url" };
+  if (/zjz\.world|intelligent\.zjz\.world/i.test(config.baseUrl)) {
+    return { ok: false, detail: "gateway misconfigured (loop risk)" };
+  }
+  if ((config.name === "codex" || config.name === "claude") && isOfficialLlmHost(config.baseUrl)) {
+    return { ok: false, detail: "official endpoint disabled, use third-party gateway" };
+  }
+  return { ok: true, detail: "ok" };
+}
+
+function buildModelPathCandidates(config) {
+  const current = String(config?.modelPath || "/models").trim() || "/models";
+  const set = new Set([current]);
+  if (config?.name === "codex") {
+    set.add("/v1/models");
+    set.add("/models");
+  }
+  if (config?.name === "claude") {
+    set.add("/models");
+    set.add("/v1/models");
+  }
+  return [...set];
+}
+
+function buildChatPathCandidates(config) {
+  const current = String(config?.chatPath || "/chat/completions").trim() || "/chat/completions";
+  const set = new Set([current]);
+  if (config?.name === "codex") {
+    set.add(DEFAULT_CODEX_CHAT_PATH);
+    set.add("/responses");
+    set.add("/v1/chat/completions");
+    set.add("/chat/completions");
+  }
+  if (config?.name === "claude") {
+    set.add("/chat/completions");
+    set.add("/v1/chat/completions");
+  }
+  return [...set];
 }
 
 function makeModelKey(provider, modelId) {
@@ -598,10 +665,10 @@ function providerConfig(env) {
   const codex = {
     name: "codex",
     label: "Codex",
-    baseUrl: normalizeBaseUrl(env.CODEX_BASE_URL || ""),
+    baseUrl: normalizeBaseUrl(env.CODEX_BASE_URL || DEFAULT_CODEX_BASE_URL),
     apiKey: String(env.CODEX_API_KEY || "").trim(),
-    modelPath: String(env.CODEX_MODEL_PATH || "/models").trim(),
-    chatPath: String(env.CODEX_CHAT_PATH || "/chat/completions").trim(),
+    modelPath: String(env.CODEX_MODEL_PATH || DEFAULT_CODEX_MODEL_PATH).trim(),
+    chatPath: String(env.CODEX_CHAT_PATH || DEFAULT_CODEX_CHAT_PATH).trim(),
     fallbackModels: parseCsv(env.CODEX_MODELS).length ? parseCsv(env.CODEX_MODELS) : FALLBACK_CODEX_MODELS
   };
 
@@ -613,7 +680,7 @@ function playgroundProviderConfig(env) {
   const claude = {
     name: "claude",
     label: "Claude",
-    baseUrl: normalizeBaseUrl(env.CLAUDE_BASE_URL || "https://cursor.scihub.edu.kg/api"),
+    baseUrl: normalizeBaseUrl(env.CLAUDE_BASE_URL || DEFAULT_CLAUDE_BASE_URL),
     apiKey: String(env.CLAUDE_API_KEY || "").trim(),
     modelPath: String(env.CLAUDE_MODEL_PATH || "/models").trim(),
     chatPath: String(env.CLAUDE_CHAT_PATH || "/chat/completions").trim(),
@@ -1190,55 +1257,55 @@ async function fetchProviderModels(config) {
       models: buildModelRows(config.name, config.label, config.fallbackModels)
     };
   }
-  if (/zjz\.world|intelligent\.zjz\.world/i.test(config.baseUrl)) {
+  const baseCheck = validateProviderBase(config);
+  if (!baseCheck.ok) {
     return {
       ok: false,
-      detail: "gateway misconfigured (loop risk)",
+      detail: baseCheck.detail,
       models: buildModelRows(config.name, config.label, config.fallbackModels)
     };
   }
-  const target = `${config.baseUrl}${config.modelPath}`;
-  try {
-    const resp = await fetch(target, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        "Content-Type": "application/json"
+  const modelPaths = buildModelPathCandidates(config);
+  let lastError = "";
+  for (const modelPath of modelPaths) {
+    const target = `${config.baseUrl}${modelPath}`;
+    try {
+      const resp = await fetch(target, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          "Content-Type": "application/json"
+        }
+      });
+      const payload = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        const err = payload?.error?.message || payload?.message || `HTTP ${resp.status}`;
+        lastError = `models failed: ${err}`;
+        continue;
       }
-    });
-    const payload = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-      const err = payload?.error?.message || payload?.message || `HTTP ${resp.status}`;
+      const ids = pickModelIds(payload);
+      if (!ids.length) {
+        lastError = "models empty";
+        continue;
+      }
+      let finalIds = ids;
+      if (config.name === "codex") {
+        const codexOnly = ids.filter((id) => /codex/i.test(id));
+        if (codexOnly.length) finalIds = codexOnly;
+      }
       return {
-        ok: false,
-        detail: `models failed: ${err}`,
-        models: buildModelRows(config.name, config.label, config.fallbackModels)
+        ok: true,
+        detail: `${finalIds.length} models`,
+        models: buildModelRows(config.name, config.label, finalIds)
       };
+    } catch (error) {
+      lastError = `models error: ${String(error?.message || error)}`;
     }
-    const ids = pickModelIds(payload);
-    if (!ids.length) {
-      return {
-        ok: false,
-        detail: "models empty, fallback used",
-        models: buildModelRows(config.name, config.label, config.fallbackModels)
-      };
-    }
-    let finalIds = ids;
-    if (config.name === "codex") {
-      const codexOnly = ids.filter((id) => /codex/i.test(id));
-      if (codexOnly.length) finalIds = codexOnly;
-    }
-    return {
-      ok: true,
-      detail: `${finalIds.length} models`,
-      models: buildModelRows(config.name, config.label, finalIds)
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      detail: `models error: ${String(error?.message || error)}`,
-      models: buildModelRows(config.name, config.label, config.fallbackModels)
-    };
+  }
+  return {
+    ok: false,
+    detail: lastError || "models lookup failed",
+    models: buildModelRows(config.name, config.label, config.fallbackModels)
   }
 }
 
@@ -1280,49 +1347,62 @@ async function callProviderChat(config, modelId, message) {
   if (!config.baseUrl || !config.apiKey) {
     throw new Error(`${config.label} gateway not configured`);
   }
-  if (/zjz\.world|intelligent\.zjz\.world/i.test(config.baseUrl)) {
-    throw new Error(`${config.label} gateway misconfigured (loop risk)`);
+  const baseCheck = validateProviderBase(config);
+  if (!baseCheck.ok) {
+    throw new Error(`${config.label} ${baseCheck.detail}`);
   }
-  const endpoint = `${config.baseUrl}${config.chatPath}`;
-  const useResponsesApi = /\/responses\b/i.test(config.chatPath);
-  const requestBody = useResponsesApi
-    ? {
-        model: modelId,
-        input: message,
-        stream: false
+  const chatPaths = buildChatPathCandidates(config);
+  let lastError = "";
+
+  for (const chatPath of chatPaths) {
+    const endpoint = `${config.baseUrl}${chatPath}`;
+    const useResponsesApi = /\/responses\b/i.test(chatPath);
+    const requestBody = useResponsesApi
+      ? {
+          model: modelId,
+          input: message,
+          stream: false
+        }
+      : {
+          model: modelId,
+          messages: [{ role: "user", content: message }],
+          stream: false
+        };
+    try {
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+      const payload = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        const err = payload?.error?.message || payload?.message || `HTTP ${resp.status}`;
+        lastError = `${config.label} chat failed: ${err}`;
+        continue;
       }
-    : {
-        model: modelId,
-        messages: [{ role: "user", content: message }],
-        stream: false
-      };
-  const resp = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(requestBody)
-  });
-  const payload = await resp.json().catch(() => ({}));
-  if (!resp.ok) {
-    const err = payload?.error?.message || payload?.message || `HTTP ${resp.status}`;
-    throw new Error(`${config.label} chat failed: ${err}`);
+
+      const responseOutputText =
+        payload?.output_text ??
+        payload?.output?.text ??
+        (Array.isArray(payload?.output)
+          ? payload.output
+              .flatMap((item) => item?.content || [])
+              .map((part) => part?.text || "")
+              .filter(Boolean)
+              .join("\n")
+          : "");
+      const content = payload?.choices?.[0]?.message?.content ?? responseOutputText ?? "";
+      const reply = normalizeReplyContent(content) || "(empty reply)";
+      const usage = normalizeUsage(payload, message, reply);
+      return { reply, usage };
+    } catch (error) {
+      lastError = String(error?.message || error);
+    }
   }
-  const responseOutputText =
-    payload?.output_text ??
-    payload?.output?.text ??
-    (Array.isArray(payload?.output)
-      ? payload.output
-          .flatMap((item) => item?.content || [])
-          .map((part) => part?.text || "")
-          .filter(Boolean)
-          .join("\n")
-      : "");
-  const content = payload?.choices?.[0]?.message?.content ?? responseOutputText ?? "";
-  const reply = normalizeReplyContent(content) || "(empty reply)";
-  const usage = normalizeUsage(payload, message, reply);
-  return { reply, usage };
+  throw new Error(lastError || `${config.label} chat failed`);
 }
 
 function buildTokenRows(state, modelCatalog = []) {
