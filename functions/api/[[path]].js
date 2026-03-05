@@ -160,8 +160,6 @@ function buildChatPathCandidates(config) {
   if (config?.name === "codex") {
     set.add(DEFAULT_CODEX_CHAT_PATH);
     set.add("/responses");
-    set.add("/v1/chat/completions");
-    set.add("/chat/completions");
   }
   if (config?.name === "claude") {
     set.add("/chat/completions");
@@ -1538,6 +1536,10 @@ async function callProviderChat(config, modelId, message) {
         lastError = `${config.label} chat failed: ${err}`;
         continue;
       }
+      if (!payload || typeof payload !== "object" || !Object.keys(payload).length) {
+        lastError = `${config.label} chat failed: invalid json payload`;
+        continue;
+      }
 
       const responseOutputText =
         payload?.output_text ??
@@ -1552,6 +1554,10 @@ async function callProviderChat(config, modelId, message) {
       const content = payload?.choices?.[0]?.message?.content ?? responseOutputText ?? "";
       const reply = normalizeReplyContent(content) || "(empty reply)";
       const usage = normalizeUsage(payload, message, reply);
+      if (reply === "(empty reply)" && Number(usage?.total || 0) <= 0) {
+        lastError = `${config.label} chat failed: empty response payload`;
+        continue;
+      }
       return { reply, usage };
     } catch (error) {
       lastError = String(error?.message || error);
@@ -1609,8 +1615,16 @@ async function callProviderChatStream(config, modelId, message, onDelta) {
       }
 
       const payload = await resp.json().catch(() => ({}));
+      if (!payload || typeof payload !== "object" || !Object.keys(payload).length) {
+        lastError = `${config.label} chat failed: invalid json payload`;
+        continue;
+      }
       const reply = extractReplyFromPayload(payload) || "(empty reply)";
       const usage = normalizeUsage(payload, message, reply);
+      if (reply === "(empty reply)" && Number(usage?.total || 0) <= 0) {
+        lastError = `${config.label} chat failed: empty response payload`;
+        continue;
+      }
       return { reply, usage };
     } catch (error) {
       lastError = String(error?.message || error);
