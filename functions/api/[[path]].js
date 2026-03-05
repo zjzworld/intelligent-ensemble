@@ -158,7 +158,10 @@ function buildChatPathCandidates(config) {
   const hasConfiguredPath = config && Object.prototype.hasOwnProperty.call(config, "chatPath");
   const current = hasConfiguredPath ? String(config.chatPath || "").trim() : "/chat/completions";
   if (config?.name === "codex") {
-    return [current];
+    const wireApi = String(config?.wireApi || "responses").trim().toLowerCase();
+    if (wireApi === "responses") return ["/v1/responses"];
+    if (wireApi === "chat.completions" || wireApi === "chat_completions") return ["/v1/chat/completions"];
+    return [current || "/v1/responses"];
   }
   const set = new Set([current]);
   if (config?.name === "claude") {
@@ -668,6 +671,7 @@ function providerConfig(env) {
     apiKey: String(env.CODEX_API_KEY || "").trim(),
     modelPath: String(env.CODEX_MODEL_PATH || DEFAULT_CODEX_MODEL_PATH).trim(),
     chatPath: DEFAULT_CODEX_CHAT_PATH,
+    wireApi: String(env.CODEX_WIRE_API || "responses").trim() || "responses",
     reasoningEffort: String(env.CODEX_REASONING_EFFORT || DEFAULT_CODEX_REASONING_EFFORT).trim() || DEFAULT_CODEX_REASONING_EFFORT,
     disableResponseStorage: !/^(0|false|no|off)$/i.test(String(env.CODEX_DISABLE_RESPONSE_STORAGE || "true").trim()),
     fallbackModels: parseCsv(env.CODEX_MODELS).length ? parseCsv(env.CODEX_MODELS) : FALLBACK_CODEX_MODELS
