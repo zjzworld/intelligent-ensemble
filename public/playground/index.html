@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Intelligent Playground</title>
+    <link rel="stylesheet" href="/playground/playground.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="topbar">
+        <div class="brand">Intelligent Playground</div>
+        <nav class="nav">
+          <a href="/ensemble/">Dashboard</a>
+          <a href="/playground/">Playground</a>
+        </nav>
+      </header>
+
+      <section class="hero glass">
+        <h1>Model’s Unknown Battlegrounds</h1>
+        <p class="subtitle">One prompt, testing the best coding models in the world</p>
+
+        <div class="composer">
+          <textarea id="promptInput" rows="2" placeholder="Type your coding prompt... (Enter to run)"></textarea>
+
+          <div class="model-row">
+            <div id="selectedModels" class="selected-models"></div>
+            <div class="model-controls">
+              <select id="modelSelect"></select>
+              <button id="addModelBtn" class="btn ghost" type="button">Add Model</button>
+              <button id="runBtn" class="btn primary" type="button">Run</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="result-section">
+        <div id="statusText" class="status">Ready</div>
+        <div class="results-scroll">
+          <div id="resultsGrid" class="results-grid"></div>
+        </div>
+      </section>
+    </div>
+
+    <script src="/playground/playground.js"></script>
+  </body>
+</html>

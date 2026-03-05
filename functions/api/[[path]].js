@@ -33,6 +33,16 @@ const FALLBACK_BAILIAN_MODELS = [
 
 const FALLBACK_CODEX_MODELS = ["gpt-5.3-codex", "gpt-5-codex"];
 
+const PLAYGROUND_DEFAULT_MODELS = ["GPT-5.3-Codex", "Claude-Opus-4.6"];
+const PLAYGROUND_MODEL_CATALOG = [
+  { name: "GPT-5.3-Codex", provider: "codex", modelId: "gpt-5.3-codex" },
+  { name: "Claude-Opus-4.6", provider: "claude", modelId: "Claude-Opus-4.6" },
+  { name: "Qwen-coder-plus", provider: "bailian", modelId: "qwen3-coder-plus" },
+  { name: "GLM-5", provider: "bailian", modelId: "glm-5" },
+  { name: "Kimi-K2.5", provider: "bailian", modelId: "kimi-k2.5" },
+  { name: "MiniMax-M2.5", provider: "bailian", modelId: "MiniMax-M2.5" }
+];
+
 const STATIC_EXTERNAL_APPS = [
   { app: "Cloudflare Pages", agent: "Karina - Orchestrator", ok: true, detail: "active" },
   { app: "GitHub", agent: "Seunggi - DevOps", ok: true, detail: "connected" },
@@ -596,6 +606,32 @@ function providerConfig(env) {
   };
 
   return { bailian, codex };
+}
+
+function playgroundProviderConfig(env) {
+  const baseProviders = providerConfig(env);
+  const claude = {
+    name: "claude",
+    label: "Claude",
+    baseUrl: normalizeBaseUrl(env.CLAUDE_BASE_URL || "https://cursor.scihub.edu.kg/api"),
+    apiKey: String(env.CLAUDE_API_KEY || "").trim(),
+    modelPath: String(env.CLAUDE_MODEL_PATH || "/models").trim(),
+    chatPath: String(env.CLAUDE_CHAT_PATH || "/chat/completions").trim(),
+    fallbackModels: ["Claude-Opus-4.6"]
+  };
+  return {
+    bailian: baseProviders.bailian,
+    codex: baseProviders.codex,
+    claude
+  };
+}
+
+function getPlaygroundModelRows() {
+  return PLAYGROUND_MODEL_CATALOG.map((row) => ({
+    name: row.name,
+    provider: row.provider,
+    modelId: row.modelId
+  }));
 }
 
 function discordSyncConfig(env) {
@@ -1699,6 +1735,87 @@ export const onRequest = async (context) => {
       accepted: rows.length,
       source,
       updatedAt: nowIso()
+    });
+  }
+
+  if (route === "/playground/models" && method === "GET") {
+    return json({
+      models: getPlaygroundModelRows(),
+      defaults: [...PLAYGROUND_DEFAULT_MODELS]
+    });
+  }
+
+  if (route === "/playground/run" && method === "POST") {
+    const body = await readPayload(request);
+    const prompt = String(body?.prompt || "").trim();
+    if (!prompt) {
+      return json({ ok: false, error: "prompt required" }, 400);
+    }
+
+    const inputModels = Array.isArray(body?.models) ? body.models : [];
+    const normalizedNames = [...new Set(inputModels.map((item) => String(item || "").trim()).filter(Boolean))].slice(0, 6);
+    const selectedNames = normalizedNames.length ? normalizedNames : [...PLAYGROUND_DEFAULT_MODELS];
+    const catalogMap = new Map(PLAYGROUND_MODEL_CATALOG.map((row) => [row.name, row]));
+    const selectedRows = selectedNames.map((name) => catalogMap.get(name)).filter(Boolean);
+    if (!selectedRows.length) {
+      return json({ ok: false, error: "no valid models selected" }, 400);
+    }
+
+    const providers = playgroundProviderConfig(env);
+    const startedAt = Date.now();
+    const results = await Promise.all(
+      selectedRows.map(async (row) => {
+        const provider = providers[row.provider];
+        const started = Date.now();
+        try {
+          const chat = await callProviderChat(provider, row.modelId, prompt);
+          const ended = Date.now();
+          const usage = chat?.usage || estimateUsage(prompt, chat?.reply || "");
+
+          state.tokenEvents.push({
+            id: crypto.randomUUID(),
+            ts: nowIso(),
+            modelKey: makeModelKey(row.provider, row.modelId),
+            modelLabel: row.name,
+            totalTokens: Number(usage?.total || 0) || 0
+          });
+          if (state.tokenEvents.length > 5000) {
+            state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
+          }
+
+          return {
+            name: row.name,
+            provider: row.provider,
+            modelId: row.modelId,
+            ok: true,
+            reply: String(chat?.reply || ""),
+            latencyMs: Math.max(0, ended - started),
+            usage: {
+              input: Number(usage?.input || 0) || 0,
+              output: Number(usage?.output || 0) || 0,
+              total: Number(usage?.total || 0) || 0
+            }
+          };
+        } catch (error) {
+          return {
+            name: row.name,
+            provider: row.provider,
+            modelId: row.modelId,
+            ok: false,
+            error: String(error?.message || error),
+            latencyMs: Math.max(0, Date.now() - started),
+            usage: { input: 0, output: 0, total: 0 }
+          };
+        }
+      })
+    );
+
+    return json({
+      ok: true,
+      prompt,
+      elapsedMs: Math.max(0, Date.now() - startedAt),
+      results,
+      defaults: [...PLAYGROUND_DEFAULT_MODELS]
     });
   }
 
