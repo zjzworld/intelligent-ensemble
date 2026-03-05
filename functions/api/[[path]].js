@@ -1470,6 +1470,34 @@ function formatSseEvent(event, data) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms || 0))));
+}
+
+function isRetryableModelError(errorLike) {
+  const text = String(errorLike?.message || errorLike || "").toLowerCase();
+  if (!text) return false;
+  const retryablePatterns = [
+    "timed out",
+    "timeout",
+    "network",
+    "fetch failed",
+    "connection reset",
+    "connection aborted",
+    "internal server error",
+    "bad gateway",
+    "gateway timeout",
+    "service unavailable",
+    "http 429",
+    "http 500",
+    "http 502",
+    "http 503",
+    "http 504",
+    "e015"
+  ];
+  return retryablePatterns.some((pattern) => text.includes(pattern));
+}
+
 async function callProviderChat(config, modelId, message) {
   if (!config.baseUrl || !config.apiKey) {
     throw new Error(`${config.label} gateway not configured`);
@@ -1532,6 +1560,34 @@ async function callProviderChat(config, modelId, message) {
   throw new Error(lastError || `${config.label} chat failed`);
 }
 
+async function callProviderChatWithRetry(config, modelId, message, options = {}) {
+  const maxRetries = Math.max(0, Math.min(3, Number(options.maxRetries ?? 1) || 0));
+  const onRetry = typeof options.onRetry === "function" ? options.onRetry : null;
+  let attempt = 0;
+  let lastError = null;
+  while (attempt <= maxRetries) {
+    try {
+      const result = await callProviderChat(config, modelId, message);
+      return { ...result, attempts: attempt + 1 };
+    } catch (error) {
+      lastError = error;
+      if (attempt >= maxRetries || !isRetryableModelError(error)) break;
+      attempt += 1;
+      const waitMs = 300 * attempt;
+      if (onRetry) {
+        onRetry({
+          attempt,
+          maxRetries,
+          delayMs: waitMs,
+          error: String(error?.message || error)
+        });
+      }
+      await delay(waitMs);
+    }
+  }
+  throw lastError || new Error(`${config.label} chat failed`);
+}
+
 async function callProviderChatStream(config, modelId, message, onDelta) {
   if (!config.baseUrl || !config.apiKey) {
     throw new Error(`${config.label} gateway not configured`);
@@ -1589,6 +1645,34 @@ async function callProviderChatStream(config, modelId, message, onDelta) {
     }
   }
   throw new Error(lastError || `${config.label} chat failed`);
+}
+
+async function callProviderChatStreamWithRetry(config, modelId, message, onDelta, options = {}) {
+  const maxRetries = Math.max(0, Math.min(3, Number(options.maxRetries ?? 1) || 0));
+  const onRetry = typeof options.onRetry === "function" ? options.onRetry : null;
+  let attempt = 0;
+  let lastError = null;
+  while (attempt <= maxRetries) {
+    try {
+      const result = await callProviderChatStream(config, modelId, message, onDelta);
+      return { ...result, attempts: attempt + 1 };
+    } catch (error) {
+      lastError = error;
+      if (attempt >= maxRetries || !isRetryableModelError(error)) break;
+      attempt += 1;
+      const waitMs = 300 * attempt;
+      if (onRetry) {
+        onRetry({
+          attempt,
+          maxRetries,
+          delayMs: waitMs,
+          error: String(error?.message || error)
+        });
+      }
+      await delay(waitMs);
+    }
+  }
+  throw lastError || new Error(`${config.label} chat failed`);
 }
 
 function buildTokenRows(state, modelCatalog = []) {
@@ -2086,14 +2170,30 @@ export const onRequest = async (context) => {
                 });
 
                 try {
-                  let chat = await callProviderChatStream(provider, usedModelId, prompt, (delta) => {
-                    send("model_delta", {
-                      name: row.name,
-                      provider: row.provider,
-                      modelId: usedModelId,
-                      delta: String(delta || "")
-                    });
-                  });
+                  let chat = await callProviderChatStreamWithRetry(
+                    provider,
+                    usedModelId,
+                    prompt,
+                    (delta) => {
+                      send("model_delta", {
+                        name: row.name,
+                        provider: row.provider,
+                        modelId: usedModelId,
+                        delta: String(delta || "")
+                      });
+                    },
+                    {
+                      maxRetries: 1,
+                      onRetry: (retry) => {
+                        send("model_info", {
+                          name: row.name,
+                          provider: row.provider,
+                          modelId: usedModelId,
+                          info: `retry ${retry.attempt}/${retry.maxRetries} (${retry.delayMs}ms)`
+                        });
+                      }
+                    }
+                  );
 
                   if (!chat?.reply && row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
                     usedModelId = "gpt-5-codex";
@@ -2103,14 +2203,30 @@ export const onRequest = async (context) => {
                       modelId: usedModelId,
                       info: "fallback model switched"
                     });
-                    chat = await callProviderChatStream(provider, usedModelId, prompt, (delta) => {
-                      send("model_delta", {
-                        name: row.name,
-                        provider: row.provider,
-                        modelId: usedModelId,
-                        delta: String(delta || "")
-                      });
-                    });
+                    chat = await callProviderChatStreamWithRetry(
+                      provider,
+                      usedModelId,
+                      prompt,
+                      (delta) => {
+                        send("model_delta", {
+                          name: row.name,
+                          provider: row.provider,
+                          modelId: usedModelId,
+                          delta: String(delta || "")
+                        });
+                      },
+                      {
+                        maxRetries: 1,
+                        onRetry: (retry) => {
+                          send("model_info", {
+                            name: row.name,
+                            provider: row.provider,
+                            modelId: usedModelId,
+                            info: `retry ${retry.attempt}/${retry.maxRetries} (${retry.delayMs}ms)`
+                          });
+                        }
+                      }
+                    );
                   }
 
                   const ended = Date.now();
@@ -2149,14 +2265,30 @@ export const onRequest = async (context) => {
                         modelId: usedModelId,
                         info: "fallback model switched"
                       });
-                      const fallbackChat = await callProviderChatStream(provider, usedModelId, prompt, (delta) => {
-                        send("model_delta", {
-                          name: row.name,
-                          provider: row.provider,
-                          modelId: usedModelId,
-                          delta: String(delta || "")
-                        });
-                      });
+                      const fallbackChat = await callProviderChatStreamWithRetry(
+                        provider,
+                        usedModelId,
+                        prompt,
+                        (delta) => {
+                          send("model_delta", {
+                            name: row.name,
+                            provider: row.provider,
+                            modelId: usedModelId,
+                            delta: String(delta || "")
+                          });
+                        },
+                        {
+                          maxRetries: 1,
+                          onRetry: (retry) => {
+                            send("model_info", {
+                              name: row.name,
+                              provider: row.provider,
+                              modelId: usedModelId,
+                              info: `retry ${retry.attempt}/${retry.maxRetries} (${retry.delayMs}ms)`
+                            });
+                          }
+                        }
+                      );
                       const ended = Date.now();
                       const usage = fallbackChat?.usage || estimateUsage(prompt, fallbackChat?.reply || "");
                       state.tokenEvents.push({
@@ -2242,10 +2374,10 @@ export const onRequest = async (context) => {
         let usedModelId = row.modelId;
         const started = Date.now();
         try {
-          let chat = await callProviderChat(provider, usedModelId, prompt);
+          let chat = await callProviderChatWithRetry(provider, usedModelId, prompt, { maxRetries: 1 });
           if (!chat?.reply && row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
             usedModelId = "gpt-5-codex";
-            chat = await callProviderChat(provider, usedModelId, prompt);
+            chat = await callProviderChatWithRetry(provider, usedModelId, prompt, { maxRetries: 1 });
           }
           const ended = Date.now();
           const usage = chat?.usage || estimateUsage(prompt, chat?.reply || "");
@@ -2278,7 +2410,7 @@ export const onRequest = async (context) => {
           if (row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
             try {
               usedModelId = "gpt-5-codex";
-              const fallbackChat = await callProviderChat(provider, usedModelId, prompt);
+              const fallbackChat = await callProviderChatWithRetry(provider, usedModelId, prompt, { maxRetries: 1 });
               const ended = Date.now();
               const usage = fallbackChat?.usage || estimateUsage(prompt, fallbackChat?.reply || "");
               state.tokenEvents.push({
