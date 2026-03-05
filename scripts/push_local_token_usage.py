@@ -3,9 +3,8 @@ import datetime as dt
 import glob
 import json
 import os
+import subprocess
 import sys
-import urllib.error
-import urllib.request
 
 
 RUNTIME_AGENTS_DIR = "/Users/mac_mini_de_zjz/Desktop/Intelligent Body/runtime/agents"
@@ -102,19 +101,30 @@ def parse_usage_rows():
 
 def post_rows(url, token, rows):
   payload = {"source": "local-runtime-agents", "rows": rows}
-  data = json.dumps(payload).encode("utf-8")
-  req = urllib.request.Request(
+  cmd = [
+    "curl",
+    "-sS",
+    "-w",
+    "\\n__HTTP_CODE__:%{http_code}",
+    "-X",
+    "POST",
     url,
-    data=data,
-    method="POST",
-    headers={
-      "Content-Type": "application/json",
-      "Authorization": f"Bearer {token}",
-    },
-  )
-  with urllib.request.urlopen(req, timeout=30) as resp:
-    body = resp.read().decode("utf-8", errors="ignore")
-    return resp.getcode(), body
+    "-H",
+    f"Authorization: Bearer {token}",
+    "-H",
+    "Content-Type: application/json",
+    "-H",
+    "User-Agent: Mozilla/5.0",
+    "--data-binary",
+    json.dumps(payload),
+  ]
+  result = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
+  output = (result.stdout or "").strip()
+  marker = "__HTTP_CODE__:"
+  if marker in output:
+    body, _, status_raw = output.rpartition(marker)
+    return safe_int(status_raw.strip(), 0), body.strip()
+  return 0, output
 
 
 def main():
@@ -132,10 +142,6 @@ def main():
     print(f"ingest_status={code}")
     print(body[:800])
     return 0 if 200 <= code < 300 else 1
-  except urllib.error.HTTPError as error:
-    print(f"ingest_http_error={error.code}")
-    print(error.read().decode('utf-8', errors='ignore')[:800])
-    return 1
   except Exception as error:
     print(f"ingest_error={error}")
     return 1
