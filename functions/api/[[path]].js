@@ -928,11 +928,13 @@ function buildAgentsStatus() {
   };
 }
 
-function buildExternalStatus(state) {
+function buildExternalStatus(state, env) {
   const checkedAt = nowIso();
   const source = state.modelSourceStatus || {};
   const discordStatus = state.discordFeedStatus || { ok: false, detail: "not checked" };
   const tokenSyncStatus = state.syncedTokenStatus || { ok: false, detail: "not checked" };
+  const hasSqliteBinding = !!getSqliteDb(env);
+  const sqliteReady = hasSqliteBinding && !!state.sqliteReady;
   const modelSources = [
     {
       app: "Discord API",
@@ -957,6 +959,12 @@ function buildExternalStatus(state) {
       agent: "Karina - Orchestrator",
       ok: !!tokenSyncStatus.ok,
       detail: tokenSyncStatus.detail || "not checked"
+    },
+    {
+      app: "Cloud SQLite",
+      agent: "Seunggi - DevOps",
+      ok: sqliteReady,
+      detail: sqliteReady ? "d1 bound and writable" : hasSqliteBinding ? "d1 bound but not ready" : "d1 binding missing"
     }
   ];
   return {
@@ -1080,7 +1088,7 @@ export const onRequest = async (context) => {
     await refreshModelCatalog(state, env);
     await refreshDiscordFeed(state, env);
     await refreshSyncedTokenRows(state, env);
-    return json(buildExternalStatus(state));
+    return json(buildExternalStatus(state, env));
   }
 
   if (route === "/chat/models" && method === "GET") {
