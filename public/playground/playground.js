@@ -1,6 +1,6 @@
 const FALLBACK_MODELS = [
   { name: "GPT-5.3-Codex", provider: "codex", modelId: "gpt-5.3-codex" },
-  { name: "Claude-Opus-4.6", provider: "claude", modelId: "Claude-Opus-4.6" },
+  { name: "Claude-Opus-4.6", provider: "claude", modelId: "claude-opus-4-6" },
   { name: "Qwen-coder-plus", provider: "bailian", modelId: "qwen3-coder-plus" },
   { name: "GLM-5", provider: "bailian", modelId: "glm-5" },
   { name: "Kimi-K2.5", provider: "bailian", modelId: "kimi-k2.5" },
@@ -12,7 +12,9 @@ const FALLBACK_DEFAULTS = ["GPT-5.3-Codex", "Claude-Opus-4.6"];
 const state = {
   allModels: [...FALLBACK_MODELS],
   selected: [...FALLBACK_DEFAULTS],
-  running: false
+  running: false,
+  resultsByName: new Map(),
+  streamDone: false
 };
 
 const el = {
@@ -91,40 +93,40 @@ function renderSelectedModels() {
 
 function resultMetaText(result) {
   if (!result) return "";
-  if (!result.ok) return `Failed · ${result.latencyMs || 0} ms`;
+  if (result.status === "queued") return "Queued";
+  if (result.status === "running") return "In response...";
+  if (result.status === "failed" || result.ok === false) return `Failed · ${result.latencyMs || 0} ms`;
+  if (result.status !== "done" && result.ok !== true) return "Ready";
   const tokenTotal = Number(result?.usage?.total || 0) || 0;
   return `${result.latencyMs || 0} ms · ${tokenTotal} tokens`;
 }
 
-function renderResultSkeletons() {
-  const count = Math.max(1, state.selected.length);
-  el.resultsGrid.style.gridTemplateColumns = `repeat(${count}, minmax(0, 1fr))`;
-  el.resultsGrid.innerHTML = "";
+function emptyResult(name) {
+  return {
+    name,
+    status: "idle",
+    ok: null,
+    reply: "",
+    error: "",
+    modelId: "",
+    latencyMs: 0,
+    usage: { input: 0, output: 0, total: 0 },
+    startedAt: 0
+  };
+}
+
+function ensureSelectedResultRows(status = "idle") {
+  const next = new Map();
   for (const name of state.selected) {
-    const card = document.createElement("article");
-    card.className = "result-card";
-
-    const head = document.createElement("div");
-    head.className = "result-head";
-
-    const title = document.createElement("div");
-    title.className = "result-title";
-    title.textContent = name;
-    head.appendChild(title);
-
-    const meta = document.createElement("div");
-    meta.className = "result-meta";
-    meta.textContent = state.running ? "Running..." : "Ready";
-    head.appendChild(meta);
-    card.appendChild(head);
-
-    const body = document.createElement("div");
-    body.className = "result-body result-empty";
-    body.textContent = state.running ? "Generating response..." : "Waiting for prompt.";
-    card.appendChild(body);
-
-    el.resultsGrid.appendChild(card);
+    const existing = state.resultsByName.get(name) || emptyResult(name);
+    next.set(name, { ...existing, status: existing.status === "done" || existing.status === "failed" ? existing.status : status });
   }
+  state.resultsByName = next;
+}
+
+function renderResultSkeletons() {
+  ensureSelectedResultRows(state.running ? "queued" : "idle");
+  renderResults(state.resultsByName);
 }
 
 function renderResults(resultsByName) {
@@ -156,9 +158,17 @@ function renderResults(resultsByName) {
     if (!result) {
       body.classList.add("result-empty");
       body.textContent = "No response.";
-    } else if (!result.ok) {
+    } else if (result.status === "queued") {
+      body.classList.add("result-empty");
+      body.textContent = "Queued...";
+    } else if (result.status === "running") {
+      body.textContent = result.reply ? `${result.reply}▌` : "In response...";
+    } else if (result.status === "failed" || result.ok === false) {
       body.classList.add("result-empty");
       body.textContent = result.error || "Request failed.";
+    } else if (result.status !== "done" && result.ok !== true) {
+      body.classList.add("result-empty");
+      body.textContent = "Waiting for prompt.";
     } else {
       body.textContent = result.reply || "(empty reply)";
     }
@@ -168,32 +178,160 @@ function renderResults(resultsByName) {
   }
 }
 
+function patchResult(name, patch) {
+  const current = state.resultsByName.get(name) || emptyResult(name);
+  state.resultsByName.set(name, { ...current, ...patch });
+}
+
+function processSseFrame(frame) {
+  const lines = String(frame || "").split(/\r?\n/);
+  let event = "message";
+  const dataLines = [];
+  for (const line of lines) {
+    if (!line) continue;
+    if (line.startsWith("event:")) {
+      event = line.slice(6).trim() || "message";
+    } else if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trimStart());
+    }
+  }
+  const raw = dataLines.join("\n").trim();
+  if (!raw) return;
+  let payload = null;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return;
+  }
+
+  if (event === "init") {
+    ensureSelectedResultRows("queued");
+    renderResults(state.resultsByName);
+    return;
+  }
+
+  if (event === "model_start") {
+    patchResult(String(payload?.name || ""), {
+      status: "running",
+      ok: null,
+      error: "",
+      startedAt: Date.now(),
+      modelId: String(payload?.modelId || "")
+    });
+    renderResults(state.resultsByName);
+    return;
+  }
+
+  if (event === "model_delta") {
+    const name = String(payload?.name || "");
+    const row = state.resultsByName.get(name) || emptyResult(name);
+    patchResult(name, {
+      status: "running",
+      reply: `${row.reply || ""}${String(payload?.delta || "")}`
+    });
+    renderResults(state.resultsByName);
+    return;
+  }
+
+  if (event === "model_end") {
+    const name = String(payload?.name || "");
+    const row = state.resultsByName.get(name) || emptyResult(name);
+    const incomingReply = String(payload?.reply || "");
+    const mergedReply =
+      incomingReply && incomingReply.startsWith(row.reply || "") ? incomingReply : String(row.reply || incomingReply || "");
+    patchResult(name, {
+      status: payload?.ok ? "done" : "failed",
+      ok: !!payload?.ok,
+      error: String(payload?.error || ""),
+      reply: mergedReply,
+      modelId: String(payload?.modelId || row.modelId || ""),
+      latencyMs: Number(payload?.latencyMs || 0) || 0,
+      usage: payload?.usage || row.usage || { input: 0, output: 0, total: 0 }
+    });
+    renderResults(state.resultsByName);
+    return;
+  }
+
+  if (event === "complete") {
+    state.streamDone = true;
+    setStatus(`Completed in ${Number(payload?.elapsedMs || 0)} ms`);
+    return;
+  }
+
+  if (event === "error") {
+    setStatus(`Error: ${String(payload?.error || "stream failed")}`);
+  }
+}
+
+async function consumeEventStream(resp) {
+  const reader = resp.body?.getReader();
+  if (!reader) {
+    throw new Error("stream not available");
+  }
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true }).replace(/\r/g, "");
+    let idx = buffer.indexOf("\n\n");
+    while (idx >= 0) {
+      const frame = buffer.slice(0, idx);
+      buffer = buffer.slice(idx + 2);
+      processSseFrame(frame);
+      idx = buffer.indexOf("\n\n");
+    }
+  }
+  if (buffer.trim()) {
+    processSseFrame(buffer);
+  }
+}
+
 async function runPlayground() {
   const prompt = String(el.promptInput.value || "").trim();
   if (!prompt || state.running) return;
 
   state.running = true;
+  state.streamDone = false;
+  state.resultsByName = new Map(state.selected.map((name) => [name, { ...emptyResult(name), status: "queued" }]));
   setStatus(`Running ${state.selected.length} model(s)...`);
-  renderResultSkeletons();
+  renderResults(state.resultsByName);
   el.runBtn.disabled = true;
 
   try {
     const resp = await fetch("/api/playground/run", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream, application/json"
+      },
       body: JSON.stringify({
         prompt,
-        models: [...state.selected]
+        models: [...state.selected],
+        stream: true
       })
     });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || !data?.ok) {
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
       throw new Error(data?.error || `HTTP ${resp.status}`);
     }
 
-    const byName = new Map((Array.isArray(data.results) ? data.results : []).map((row) => [String(row.name || ""), row]));
-    renderResults(byName);
-    setStatus(`Completed in ${Number(data.elapsedMs || 0)} ms`);
+    const contentType = String(resp.headers.get("content-type") || "").toLowerCase();
+    if (contentType.includes("text/event-stream")) {
+      await consumeEventStream(resp);
+      if (!state.streamDone) {
+        setStatus("Completed");
+      }
+    } else {
+      const data = await resp.json().catch(() => ({}));
+      if (!data?.ok) {
+        throw new Error(data?.error || "run failed");
+      }
+      const byName = new Map((Array.isArray(data.results) ? data.results : []).map((row) => [String(row.name || ""), row]));
+      state.resultsByName = new Map(state.selected.map((name) => [name, byName.get(name) || emptyResult(name)]));
+      renderResults(state.resultsByName);
+      setStatus(`Completed in ${Number(data.elapsedMs || 0)} ms`);
+    }
   } catch (error) {
     setStatus(`Error: ${String(error?.message || error)}`);
     renderResultSkeletons();

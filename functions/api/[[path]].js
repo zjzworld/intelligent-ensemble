@@ -1344,6 +1344,132 @@ function resolveCatalogModel(catalog, rawValue) {
   return null;
 }
 
+function parseSseFrame(frameText) {
+  const lines = String(frameText || "")
+    .split(/\r?\n/)
+    .map((line) => String(line || ""));
+  let event = "message";
+  const dataLines = [];
+  for (const line of lines) {
+    if (!line) continue;
+    if (line.startsWith("event:")) {
+      event = line.slice(6).trim() || "message";
+      continue;
+    }
+    if (line.startsWith("data:")) {
+      dataLines.push(line.slice(5).trimStart());
+    }
+  }
+  return { event, data: dataLines.join("\n").trim() };
+}
+
+function extractDeltaFromStreamPayload(payload) {
+  if (!payload || typeof payload !== "object") return "";
+  if (typeof payload.delta === "string" && payload.delta) return payload.delta;
+  if (typeof payload.output_text === "string" && payload.output_text) return payload.output_text;
+  if (typeof payload?.output?.text === "string" && payload.output.text) return payload.output.text;
+  if (typeof payload?.choices?.[0]?.delta?.content === "string") {
+    return String(payload.choices[0].delta.content || "");
+  }
+  if (Array.isArray(payload?.choices?.[0]?.delta?.content)) {
+    return payload.choices[0].delta.content
+      .map((part) => String(part?.text || ""))
+      .filter(Boolean)
+      .join("");
+  }
+  if (typeof payload?.choices?.[0]?.text === "string" && payload.choices[0].text) {
+    return payload.choices[0].text;
+  }
+  return "";
+}
+
+function extractReplyFromPayload(payload) {
+  const responseOutputText =
+    payload?.output_text ??
+    payload?.output?.text ??
+    (Array.isArray(payload?.output)
+      ? payload.output
+          .flatMap((item) => item?.content || [])
+          .map((part) => part?.text || "")
+          .filter(Boolean)
+          .join("\n")
+      : "");
+  const content = payload?.choices?.[0]?.message?.content ?? responseOutputText ?? "";
+  return normalizeReplyContent(content) || "";
+}
+
+function mergeFullReply(current, candidate, onDelta, payload) {
+  const now = String(current || "");
+  const next = String(candidate || "");
+  if (!next) return now;
+  if (!now) {
+    if (onDelta) onDelta(next, payload);
+    return next;
+  }
+  if (next.startsWith(now) && next.length > now.length) {
+    const delta = next.slice(now.length);
+    if (delta && onDelta) onDelta(delta, payload);
+    return next;
+  }
+  if (now.startsWith(next)) return now;
+  return now;
+}
+
+async function consumeProviderSseResponse(resp, message, onDelta) {
+  if (!resp.body) {
+    throw new Error("stream body missing");
+  }
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let reply = "";
+  let lastUsagePayload = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true }).replace(/\r/g, "");
+    let splitIndex = buffer.indexOf("\n\n");
+    while (splitIndex >= 0) {
+      const frameText = buffer.slice(0, splitIndex);
+      buffer = buffer.slice(splitIndex + 2);
+      const frame = parseSseFrame(frameText);
+      if (!frame.data || frame.data === "[DONE]") {
+        splitIndex = buffer.indexOf("\n\n");
+        continue;
+      }
+      let payload = null;
+      try {
+        payload = JSON.parse(frame.data);
+      } catch {
+        splitIndex = buffer.indexOf("\n\n");
+        continue;
+      }
+
+      const delta = extractDeltaFromStreamPayload(payload);
+      if (delta) {
+        reply += delta;
+        if (onDelta) onDelta(delta, payload);
+      }
+      const maybeReply = extractReplyFromPayload(payload);
+      if (maybeReply) {
+        reply = mergeFullReply(reply, maybeReply, onDelta, payload);
+      }
+      if (payload?.usage) {
+        lastUsagePayload = payload;
+      }
+      splitIndex = buffer.indexOf("\n\n");
+    }
+  }
+
+  const usage = lastUsagePayload ? normalizeUsage(lastUsagePayload, message, reply) : estimateUsage(message, reply);
+  return { reply: reply || "(empty reply)", usage };
+}
+
+function formatSseEvent(event, data) {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
 async function callProviderChat(config, modelId, message) {
   if (!config.baseUrl || !config.apiKey) {
     throw new Error(`${config.label} gateway not configured`);
@@ -1397,6 +1523,65 @@ async function callProviderChat(config, modelId, message) {
           : "");
       const content = payload?.choices?.[0]?.message?.content ?? responseOutputText ?? "";
       const reply = normalizeReplyContent(content) || "(empty reply)";
+      const usage = normalizeUsage(payload, message, reply);
+      return { reply, usage };
+    } catch (error) {
+      lastError = String(error?.message || error);
+    }
+  }
+  throw new Error(lastError || `${config.label} chat failed`);
+}
+
+async function callProviderChatStream(config, modelId, message, onDelta) {
+  if (!config.baseUrl || !config.apiKey) {
+    throw new Error(`${config.label} gateway not configured`);
+  }
+  const baseCheck = validateProviderBase(config);
+  if (!baseCheck.ok) {
+    throw new Error(`${config.label} ${baseCheck.detail}`);
+  }
+
+  const chatPaths = buildChatPathCandidates(config);
+  let lastError = "";
+  for (const chatPath of chatPaths) {
+    const endpoint = `${config.baseUrl}${chatPath}`;
+    const useResponsesApi = /\/responses\b/i.test(chatPath);
+    const requestBody = useResponsesApi
+      ? {
+          model: modelId,
+          input: message,
+          stream: true
+        }
+      : {
+          model: modelId,
+          messages: [{ role: "user", content: message }],
+          stream: true
+        };
+
+    try {
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const contentType = String(resp.headers.get("content-type") || "").toLowerCase();
+      if (!resp.ok) {
+        const payload = await resp.json().catch(() => ({}));
+        const err = payload?.error?.message || payload?.message || `HTTP ${resp.status}`;
+        lastError = `${config.label} chat failed: ${err}`;
+        continue;
+      }
+
+      if (contentType.includes("text/event-stream")) {
+        return await consumeProviderSseResponse(resp, message, onDelta);
+      }
+
+      const payload = await resp.json().catch(() => ({}));
+      const reply = extractReplyFromPayload(payload) || "(empty reply)";
       const usage = normalizeUsage(payload, message, reply);
       return { reply, usage };
     } catch (error) {
@@ -1864,6 +2049,189 @@ export const onRequest = async (context) => {
     const selectedRows = selectedNames.map((name) => catalogMap.get(name)).filter(Boolean);
     if (!selectedRows.length) {
       return json({ ok: false, error: "no valid models selected" }, 400);
+    }
+
+    const wantsStream = body?.stream === true || /text\/event-stream/i.test(String(request.headers.get("accept") || ""));
+    if (wantsStream) {
+      const providers = playgroundProviderConfig(env);
+      const startedAt = Date.now();
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          const send = (event, payload) => {
+            try {
+              controller.enqueue(encoder.encode(formatSseEvent(event, payload)));
+            } catch {
+              // ignore broken stream
+            }
+          };
+
+          const run = async () => {
+            send("init", {
+              ok: true,
+              prompt,
+              models: selectedRows.map((row) => row.name),
+              defaults: [...PLAYGROUND_DEFAULT_MODELS]
+            });
+
+            await Promise.all(
+              selectedRows.map(async (row) => {
+                const provider = providers[row.provider];
+                let usedModelId = row.modelId;
+                const started = Date.now();
+                send("model_start", {
+                  name: row.name,
+                  provider: row.provider,
+                  modelId: usedModelId
+                });
+
+                try {
+                  let chat = await callProviderChatStream(provider, usedModelId, prompt, (delta) => {
+                    send("model_delta", {
+                      name: row.name,
+                      provider: row.provider,
+                      modelId: usedModelId,
+                      delta: String(delta || "")
+                    });
+                  });
+
+                  if (!chat?.reply && row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
+                    usedModelId = "gpt-5-codex";
+                    send("model_info", {
+                      name: row.name,
+                      provider: row.provider,
+                      modelId: usedModelId,
+                      info: "fallback model switched"
+                    });
+                    chat = await callProviderChatStream(provider, usedModelId, prompt, (delta) => {
+                      send("model_delta", {
+                        name: row.name,
+                        provider: row.provider,
+                        modelId: usedModelId,
+                        delta: String(delta || "")
+                      });
+                    });
+                  }
+
+                  const ended = Date.now();
+                  const usage = chat?.usage || estimateUsage(prompt, chat?.reply || "");
+                  state.tokenEvents.push({
+                    id: crypto.randomUUID(),
+                    ts: nowIso(),
+                    modelKey: makeModelKey(row.provider, usedModelId),
+                    modelLabel: row.name,
+                    totalTokens: Number(usage?.total || 0) || 0
+                  });
+                  if (state.tokenEvents.length > 5000) {
+                    state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
+                  }
+
+                  send("model_end", {
+                    name: row.name,
+                    provider: row.provider,
+                    modelId: usedModelId,
+                    ok: true,
+                    reply: String(chat?.reply || ""),
+                    latencyMs: Math.max(0, ended - started),
+                    usage: {
+                      input: Number(usage?.input || 0) || 0,
+                      output: Number(usage?.output || 0) || 0,
+                      total: Number(usage?.total || 0) || 0
+                    }
+                  });
+                } catch (error) {
+                  if (row.name === "GPT-5.3-Codex" && usedModelId !== "gpt-5-codex") {
+                    try {
+                      usedModelId = "gpt-5-codex";
+                      send("model_info", {
+                        name: row.name,
+                        provider: row.provider,
+                        modelId: usedModelId,
+                        info: "fallback model switched"
+                      });
+                      const fallbackChat = await callProviderChatStream(provider, usedModelId, prompt, (delta) => {
+                        send("model_delta", {
+                          name: row.name,
+                          provider: row.provider,
+                          modelId: usedModelId,
+                          delta: String(delta || "")
+                        });
+                      });
+                      const ended = Date.now();
+                      const usage = fallbackChat?.usage || estimateUsage(prompt, fallbackChat?.reply || "");
+                      state.tokenEvents.push({
+                        id: crypto.randomUUID(),
+                        ts: nowIso(),
+                        modelKey: makeModelKey(row.provider, usedModelId),
+                        modelLabel: row.name,
+                        totalTokens: Number(usage?.total || 0) || 0
+                      });
+                      if (state.tokenEvents.length > 5000) {
+                        state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
+                      }
+                      send("model_end", {
+                        name: row.name,
+                        provider: row.provider,
+                        modelId: usedModelId,
+                        ok: true,
+                        reply: String(fallbackChat?.reply || ""),
+                        latencyMs: Math.max(0, ended - started),
+                        usage: {
+                          input: Number(usage?.input || 0) || 0,
+                          output: Number(usage?.output || 0) || 0,
+                          total: Number(usage?.total || 0) || 0
+                        }
+                      });
+                      return;
+                    } catch {
+                      // ignore fallback error and keep original error output
+                    }
+                  }
+
+                  send("model_end", {
+                    name: row.name,
+                    provider: row.provider,
+                    modelId: usedModelId,
+                    ok: false,
+                    error: String(error?.message || error),
+                    latencyMs: Math.max(0, Date.now() - started),
+                    usage: { input: 0, output: 0, total: 0 }
+                  });
+                }
+              })
+            );
+
+            send("complete", {
+              ok: true,
+              prompt,
+              elapsedMs: Math.max(0, Date.now() - startedAt),
+              defaults: [...PLAYGROUND_DEFAULT_MODELS]
+            });
+            controller.close();
+          };
+
+          run().catch((error) => {
+            send("error", {
+              ok: false,
+              error: String(error?.message || error),
+              elapsedMs: Math.max(0, Date.now() - startedAt)
+            });
+            try {
+              controller.close();
+            } catch {
+              // ignore close race
+            }
+          });
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          "content-type": "text/event-stream; charset=utf-8",
+          "cache-control": "no-store",
+          connection: "keep-alive"
+        }
+      });
     }
 
     const providers = playgroundProviderConfig(env);
