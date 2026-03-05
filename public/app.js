@@ -138,6 +138,7 @@ function setStatus(text, isError = false) {
 }
 
 function setUnlockError(text) {
+  if (!el.unlockError) return;
   el.unlockError.textContent = text || "";
 }
 
@@ -148,6 +149,53 @@ function getUnlockPassword() {
 function clearUnlockDigits() {
   for (const input of el.unlockDigitInputs) {
     input.value = "";
+  }
+}
+
+function focusUnlockDigit(preferEmpty = true) {
+  const target =
+    (preferEmpty ? el.unlockDigitInputs.find((input) => !String(input.value || "").trim()) : null) || el.unlockDigitInputs[0];
+  target?.focus();
+  target?.select?.();
+}
+
+function setAppLockedState(locked) {
+  if (!el.appShell) return;
+  if (locked) {
+    el.appShell.setAttribute("inert", "");
+    el.appShell.setAttribute("aria-hidden", "true");
+  } else {
+    el.appShell.removeAttribute("inert");
+    el.appShell.removeAttribute("aria-hidden");
+  }
+}
+
+function trapUnlockTab(event) {
+  if (state.unlocked || event.key !== "Tab") return;
+  const inputs = el.unlockDigitInputs;
+  if (!inputs.length) return;
+  const activeIndex = inputs.indexOf(document.activeElement);
+  if (activeIndex === -1) {
+    event.preventDefault();
+    focusUnlockDigit();
+    return;
+  }
+  if (event.shiftKey && activeIndex === 0) {
+    event.preventDefault();
+    inputs[inputs.length - 1]?.focus();
+    return;
+  }
+  if (!event.shiftKey && activeIndex === inputs.length - 1) {
+    event.preventDefault();
+    inputs[0]?.focus();
+  }
+}
+
+function enforceUnlockFocus(event) {
+  if (state.unlocked) return;
+  if (!el.unlockOverlay.contains(event.target)) {
+    event.stopPropagation();
+    focusUnlockDigit();
   }
 }
 
@@ -167,18 +215,20 @@ function lockDashboard() {
   state.unlocked = false;
   state.unlocking = false;
   state.authToken = "";
+  setAppLockedState(true);
   el.appShell.classList.add("locked");
   el.unlockOverlay.classList.remove("hidden");
   setUnlockError("");
   clearUnlockDigits();
   setTimeout(() => {
-    el.unlockDigitInputs[0]?.focus();
+    focusUnlockDigit();
   }, 0);
 }
 
 function unlockDashboard(token) {
   state.authToken = String(token || "");
   state.unlocked = true;
+  setAppLockedState(false);
   el.appShell.classList.remove("locked");
   el.unlockOverlay.classList.add("hidden");
   setUnlockError("");
@@ -502,7 +552,9 @@ async function handleUnlock() {
   if (state.unlocking) return;
   const password = getUnlockPassword();
   if (!/^\d{6}$/.test(password)) {
-    setUnlockError("请输入6位数字");
+    shakeUnlockCard();
+    clearUnlockDigits();
+    focusUnlockDigit(false);
     return;
   }
   state.unlocking = true;
@@ -516,10 +568,9 @@ async function handleUnlock() {
     unlockDashboard(data.token);
     await bootstrapDashboard();
   } catch (error) {
-    setUnlockError("密码错误，请重试");
     shakeUnlockCard();
     clearUnlockDigits();
-    el.unlockDigitInputs[0]?.focus();
+    focusUnlockDigit(false);
   } finally {
     state.unlocking = false;
   }
@@ -582,6 +633,10 @@ async function handleSendChat() {
 
 function bindEvents() {
   el.unlockDigitInputs.forEach((input, index) => {
+    input.addEventListener("focus", () => {
+      input.select?.();
+    });
+
     input.addEventListener("input", () => {
       const digits = String(input.value || "").replace(/\D+/g, "");
       input.value = digits.slice(-1);
@@ -619,6 +674,16 @@ function bindEvents() {
     });
   });
 
+  document.addEventListener("keydown", trapUnlockTab, true);
+  document.addEventListener("focusin", enforceUnlockFocus, true);
+  el.unlockOverlay.addEventListener("pointerdown", (event) => {
+    if (state.unlocked) return;
+    const target = event.target;
+    if (target instanceof HTMLElement && target.classList.contains("unlock-digit")) return;
+    event.preventDefault();
+    focusUnlockDigit();
+  });
+
   el.notionBtn.addEventListener("click", () => setStatus("Notion button ready (link pending)."));
   el.githubBtn.addEventListener("click", () => setStatus("GitHub button ready (link pending)."));
   el.zjzBtn.addEventListener("click", () => setStatus("zjz.world button ready (link pending)."));
@@ -636,7 +701,7 @@ function init() {
   applyLabels();
   bindEvents();
   lockDashboard();
-  setStatus("Locked. Enter password to unlock.");
+  setStatus("");
 }
 
 init();
