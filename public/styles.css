@@ -247,7 +247,6 @@ body::before {
   border: 1px solid rgba(var(--border-rgb), 0.3);
   border-radius: 7px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 245, 245, 0.92));
-  color: #303030;
   cursor: pointer;
   font-size: 11px;
   font-family: var(--font-body);
