@@ -105,6 +105,40 @@ function parseModelKey(value) {
   return { provider: "legacy", modelId: text, key: text };
 }
 
+function providerDisplayName(provider) {
+  const value = String(provider || "").trim().toLowerCase();
+  if (value === "bailian") return "Bailian";
+  if (value === "codex" || value === "openai-codex") return "Codex";
+  if (!value) return "Unknown";
+  return value;
+}
+
+function normalizeTokenModelRef(rawModel, modelCatalog = []) {
+  const text = String(rawModel || "").trim();
+  if (!text) return { key: "sync::unknown", label: "unknown" };
+
+  const parsed = parseModelKey(text);
+  if (!parsed) return { key: `sync::${text}`, label: text };
+
+  if (parsed.provider === "legacy") {
+    const catalogMatch = (modelCatalog || []).find((item) => item.modelId === parsed.modelId);
+    if (catalogMatch) {
+      return { key: catalogMatch.key, label: catalogMatch.label || catalogMatch.key };
+    }
+    return { key: `sync::${parsed.modelId}`, label: parsed.modelId };
+  }
+
+  const catalogMatch = (modelCatalog || []).find((item) => item.key === parsed.key);
+  if (catalogMatch) {
+    return { key: catalogMatch.key, label: catalogMatch.label || catalogMatch.key };
+  }
+
+  return {
+    key: parsed.key,
+    label: `${parsed.modelId} · ${providerDisplayName(parsed.provider)}`
+  };
+}
+
 function getSqliteDb(env) {
   return env.DASHBOARD_DB || env.DB || null;
 }
@@ -139,7 +173,16 @@ async function ensureSqliteReady(state, env) {
       model_label TEXT NOT NULL,
       total_tokens INTEGER NOT NULL DEFAULT 0
     )`,
-    "CREATE INDEX IF NOT EXISTS idx_token_chat_events_ts ON token_chat_events(ts DESC)"
+    "CREATE INDEX IF NOT EXISTS idx_token_chat_events_ts ON token_chat_events(ts DESC)",
+    `CREATE TABLE IF NOT EXISTS token_local_rows (
+      model TEXT PRIMARY KEY,
+      requests INTEGER NOT NULL DEFAULT 0,
+      tokens_daily INTEGER NOT NULL DEFAULT 0,
+      tokens_total INTEGER NOT NULL DEFAULT 0,
+      source TEXT NOT NULL DEFAULT 'local',
+      updated_at TEXT NOT NULL
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_token_local_rows_updated ON token_local_rows(updated_at DESC)"
   ];
 
   try {
@@ -272,6 +315,50 @@ async function readSyncedTokenRowsFromDb(db) {
   }));
 }
 
+async function persistLocalTokenRows(db, rows, source = "local") {
+  if (!db) return;
+  const normalized = Array.isArray(rows) ? rows : [];
+  const updatedAt = nowIso();
+  const normalizedSource = String(source || "local").trim() || "local";
+  await db.prepare("DELETE FROM token_local_rows").run();
+  if (!normalized.length) return;
+
+  const statements = normalized.map((row) =>
+    db
+      .prepare(
+        `INSERT OR REPLACE INTO token_local_rows
+        (model, requests, tokens_daily, tokens_total, source, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
+      )
+      .bind(
+        String(row.model || "").trim(),
+        Number(row.requests || 0) || 0,
+        Number(row.tokensDaily || 0) || 0,
+        Number(row.tokensTotal || 0) || 0,
+        normalizedSource,
+        updatedAt
+      )
+  );
+  await db.batch(statements);
+}
+
+async function readLocalTokenRowsFromDb(db) {
+  if (!db) return [];
+  const { results } = await db
+    .prepare(
+      `SELECT model, requests, tokens_daily, tokens_total
+      FROM token_local_rows
+      ORDER BY tokens_total DESC, requests DESC, model ASC`
+    )
+    .all();
+  return (Array.isArray(results) ? results : []).map((row) => ({
+    model: String(row.model || "").trim(),
+    requests: Number(row.requests || 0) || 0,
+    tokensDaily: Number(row.tokens_daily || 0) || 0,
+    tokensTotal: Number(row.tokens_total || 0) || 0
+  }));
+}
+
 async function persistTokenChatEvent(db, eventRow) {
   if (!db || !eventRow) return;
   await db
@@ -333,11 +420,29 @@ function extractBearerToken(request) {
   return match ? String(match[1] || "").trim() : "";
 }
 
-async function buildTokenSyncRows(state, env) {
+async function buildTokenSyncRows(state, env, modelCatalog = []) {
   const db = await ensureSqliteReady(state, env);
   const today = new Date().toISOString().slice(0, 10);
+  const map = new Map();
+
+  const mergeRow = (rawModel, requests, tokensDaily, tokensTotal) => {
+    const ref = normalizeTokenModelRef(rawModel, modelCatalog);
+    if (!map.has(ref.key)) {
+      map.set(ref.key, {
+        model: ref.key,
+        requests: 0,
+        tokensDaily: 0,
+        tokensTotal: 0
+      });
+    }
+    const target = map.get(ref.key);
+    target.requests += Number(requests || 0) || 0;
+    target.tokensDaily += Number(tokensDaily || 0) || 0;
+    target.tokensTotal += Number(tokensTotal || 0) || 0;
+  };
+
   if (db) {
-    const { results } = await db
+    const { results: chatRows } = await db
       .prepare(
         `SELECT
           model_key,
@@ -351,26 +456,25 @@ async function buildTokenSyncRows(state, env) {
       )
       .bind(today)
       .all();
-    return (Array.isArray(results) ? results : []).map((row) => ({
-      model: String(row.model_key || row.model_label || "unknown"),
-      requests: Number(row.requests || 0) || 0,
-      tokensDaily: Number(row.tokens_daily || 0) || 0,
-      tokensTotal: Number(row.tokens_total || 0) || 0
-    }));
+    for (const row of Array.isArray(chatRows) ? chatRows : []) {
+      mergeRow(row.model_key || row.model_label || "unknown", row.requests, row.tokens_daily, row.tokens_total);
+    }
+
+    const localRows = await readLocalTokenRowsFromDb(db);
+    for (const row of localRows) {
+      mergeRow(row.model, row.requests, row.tokensDaily, row.tokensTotal);
+    }
+
+    return [...map.values()].sort((a, b) => {
+      if (b.tokensTotal !== a.tokensTotal) return b.tokensTotal - a.tokensTotal;
+      if (b.requests !== a.requests) return b.requests - a.requests;
+      return String(a.model).localeCompare(String(b.model));
+    });
   }
 
-  const map = new Map();
   for (const row of state.tokenEvents || []) {
-    const key = String(row.modelKey || row.model || "unknown");
-    if (!map.has(key)) {
-      map.set(key, { model: key, requests: 0, tokensDaily: 0, tokensTotal: 0 });
-    }
-    const target = map.get(key);
-    target.requests += 1;
-    target.tokensTotal += Number(row.totalTokens || 0);
-    if (String(row.ts || "").slice(0, 10) === today) {
-      target.tokensDaily += Number(row.totalTokens || 0);
-    }
+    const daily = String(row.ts || "").slice(0, 10) === today ? Number(row.totalTokens || 0) : 0;
+    mergeRow(row.modelKey || row.model || "unknown", 1, daily, row.totalTokens);
   }
   return [...map.values()];
 }
@@ -901,10 +1005,16 @@ function buildTokenRows(state, modelCatalog = []) {
   }
 
   for (const row of state.syncedTokenRows || []) {
-    const key = `sync::${row.model}`;
+    const ref = normalizeTokenModelRef(row.model, modelCatalog || []);
+    const key = ref.key;
     if (!map.has(key)) {
-      map.set(key, { model: row.model, requests: 0, tokensDaily: 0, tokensTotal: 0 });
+      map.set(key, { model: ref.label, requests: 0, tokensDaily: 0, tokensTotal: 0 });
       order.push(key);
+    } else {
+      const existed = map.get(key);
+      if (existed && (!existed.model || existed.model === key || /^sync::/i.test(existed.model))) {
+        existed.model = ref.label;
+      }
     }
     const target = map.get(key);
     target.requests += Number(row.requests || 0);
@@ -1129,11 +1239,39 @@ export const onRequest = async (context) => {
     }
 
     await refreshTokenEventsFromDb(state, env, true);
-    const rows = await buildTokenSyncRows(state, env);
+    await refreshModelCatalog(state, env);
+    const rows = await buildTokenSyncRows(state, env, state.modelCatalog || []);
     return json({
       ok: true,
       updatedAt: nowIso(),
       rows
+    });
+  }
+
+  if (route === "/token/local-ingest" && method === "POST") {
+    const expectedKey = String(env.TOKEN_USAGE_SYNC_API_KEY || "").trim();
+    const inputKey = extractBearerToken(request);
+    if (!expectedKey) {
+      return json({ ok: false, error: "sync key not configured" }, 503);
+    }
+    if (!safeEqual(inputKey, expectedKey)) {
+      return json({ ok: false, error: "unauthorized" }, 401);
+    }
+
+    const body = await readPayload(request);
+    const rows = normalizeTokenRows(body?.rows ? { rows: body.rows } : body);
+    const source = String(body?.source || "local-runtime").trim() || "local-runtime";
+    const db = await ensureSqliteReady(state, env);
+    if (!db) {
+      return json({ ok: false, error: "sqlite binding missing" }, 503);
+    }
+    await persistLocalTokenRows(db, rows, source);
+    state.syncedTokenRowsRefreshedAt = 0;
+    return json({
+      ok: true,
+      accepted: rows.length,
+      source,
+      updatedAt: nowIso()
     });
   }
 
