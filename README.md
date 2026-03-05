@@ -58,6 +58,7 @@ Karina 主程序直连执行（`/api/chat/karina`）新增环境变量：
 - `KARINA_EXEC_API_KEY`（可选，Bearer 鉴权）
 - `KARINA_EXEC_TIMEOUT_MS`（可选，默认 90000）
 - `KARINA_MIRROR_DISCORD`（可选，默认关闭；设为 `true` 才镜像到 Discord）
+- `KARINA_EXEC_MODEL`（可选；当 `KARINA_EXEC_API_URL` 未配置时，使用内置模型直连执行，默认 `codex::gpt-5.3-codex`）
 
 可选自建同步端点（已内置）：`GET /api/token/usage-sync`（Bearer 鉴权，使用 `TOKEN_USAGE_SYNC_API_KEY`）。
 

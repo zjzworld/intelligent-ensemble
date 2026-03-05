@@ -645,8 +645,31 @@ function extractTextFromAny(value, depth = 0) {
 async function callKarinaExecutor(state, env, message, board = "project") {
   const cfg = karinaExecConfig(env);
   if (!cfg.url) {
-    state.karinaExecStatus = { ok: false, detail: "missing KARINA_EXEC_API_URL" };
-    throw new Error("karina executor not configured");
+    try {
+      const providers = providerConfig(env);
+      const raw = String(env.KARINA_EXEC_MODEL || "codex::gpt-5.3-codex").trim();
+      const parsed = parseModelKey(raw) || { provider: "codex", modelId: "gpt-5.3-codex" };
+      const providerName = parsed.provider === "bailian" ? "bailian" : "codex";
+      const provider = providerName === "bailian" ? providers.bailian : providers.codex;
+      const fallbackModel = providerName === "bailian" ? FALLBACK_BAILIAN_MODELS[0] : FALLBACK_CODEX_MODELS[0];
+      const modelId = String(parsed.modelId || fallbackModel || "").trim();
+      if (!modelId) {
+        state.karinaExecStatus = { ok: false, detail: "embedded missing model id" };
+        throw new Error("karina embedded executor model missing");
+      }
+
+      const wrappedMessage = `Board: ${board}\n${message}`;
+      const result = await callProviderChat(provider, modelId, wrappedMessage);
+      state.karinaExecStatus = { ok: true, detail: `embedded ${provider.label}/${modelId}` };
+      return {
+        reply: String(result.reply || "").trim() || "Karina executed.",
+        config: { ...cfg, embedded: true }
+      };
+    } catch (error) {
+      const detail = String(error?.message || error);
+      state.karinaExecStatus = { ok: false, detail: `embedded failed: ${detail}` };
+      throw new Error(`karina embedded executor failed: ${detail}`);
+    }
   }
 
   let timeoutId = null;
@@ -1366,8 +1389,8 @@ function buildExternalStatus(state, env) {
     {
       app: "Karina Executor API",
       agent: "Karina - Orchestrator",
-      ok: karinaExecCfg.url ? !!karinaExec.ok : false,
-      detail: karinaExecCfg.url ? karinaExec.detail || "configured" : "missing KARINA_EXEC_API_URL"
+      ok: karinaExecCfg.url ? !!karinaExec.ok : !!karinaExec.ok && /embedded/i.test(String(karinaExec.detail || "")),
+      detail: karinaExecCfg.url ? karinaExec.detail || "configured" : karinaExec.detail || "embedded fallback (no URL)"
     },
     {
       app: "Discord API",
