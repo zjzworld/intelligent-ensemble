@@ -36,7 +36,7 @@ const DEFAULT_CODEX_BASE_URL = "https://gmn.chuangzuoli.com";
 const DEFAULT_CODEX_MODEL_PATH = "/v1/models";
 const DEFAULT_CODEX_CHAT_PATH = "/v1/responses";
 const DEFAULT_CLAUDE_BASE_URL = "https://cursor.scihub.edu.kg/api";
-const DEFAULT_PLAYGROUND_CLAUDE_MODEL = "claude-opus-4-5-20251101";
+const DEFAULT_PLAYGROUND_CLAUDE_MODEL = "claude-opus-4-6";
 
 const PLAYGROUND_DEFAULT_MODELS = ["GPT-5.3-Codex", "Claude-Opus-4.6"];
 const PLAYGROUND_MODEL_CATALOG = [
