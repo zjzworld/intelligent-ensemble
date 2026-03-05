@@ -3,6 +3,7 @@ const DEFAULT_AUTH_SECRET = "intelligent-ensemble-auth-secret";
 const AUTH_TTL_MS = 12 * 60 * 60 * 1000;
 const MODEL_CACHE_TTL_MS = 60 * 1000;
 const DISCORD_CACHE_TTL_MS = 5 * 1000;
+const TOKEN_SYNC_CACHE_TTL_MS = 1000;
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 
 const AGENTS = [
@@ -43,6 +44,7 @@ function getState() {
     globalThis.__INTELLIGENT_ENSEMBLE_EDGE_STATE = {
       startedAt: new Date().toISOString(),
       tokenEvents: [],
+      tokenEventsRefreshedAt: 0,
       alerts: [],
       workplace: [],
       modelCatalog: [],
@@ -52,7 +54,9 @@ function getState() {
       discordFeedRefreshedAt: 0,
       discordFeedStatus: { ok: false, detail: "not checked" },
       syncedTokenRows: [],
-      syncedTokenStatus: { ok: false, detail: "not checked" }
+      syncedTokenStatus: { ok: false, detail: "not checked" },
+      syncedTokenRowsRefreshedAt: 0,
+      sqliteReady: false
     };
   }
   return globalThis.__INTELLIGENT_ENSEMBLE_EDGE_STATE;
@@ -99,6 +103,228 @@ function parseModelKey(value) {
     return { provider, modelId, key: text };
   }
   return { provider: "legacy", modelId: text, key: text };
+}
+
+function getSqliteDb(env) {
+  return env.DASHBOARD_DB || env.DB || null;
+}
+
+async function ensureSqliteReady(state, env) {
+  const db = getSqliteDb(env);
+  if (!db) return null;
+  if (state.sqliteReady) return db;
+
+  const schema = [
+    `CREATE TABLE IF NOT EXISTS discord_messages (
+      id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      ts TEXT NOT NULL,
+      author TEXT NOT NULL,
+      content TEXT NOT NULL,
+      attachments_json TEXT NOT NULL DEFAULT '[]',
+      fetched_at TEXT NOT NULL
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_discord_messages_ts ON discord_messages(channel_id, ts DESC)",
+    `CREATE TABLE IF NOT EXISTS token_sync_rows (
+      model TEXT PRIMARY KEY,
+      requests INTEGER NOT NULL DEFAULT 0,
+      tokens_daily INTEGER NOT NULL DEFAULT 0,
+      tokens_total INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS token_chat_events (
+      id TEXT PRIMARY KEY,
+      ts TEXT NOT NULL,
+      model_key TEXT NOT NULL,
+      model_label TEXT NOT NULL,
+      total_tokens INTEGER NOT NULL DEFAULT 0
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_token_chat_events_ts ON token_chat_events(ts DESC)"
+  ];
+
+  try {
+    for (const statement of schema) {
+      await db.prepare(statement).run();
+    }
+    state.sqliteReady = true;
+    return db;
+  } catch {
+    state.sqliteReady = false;
+    return null;
+  }
+}
+
+async function persistDiscordRows(db, channelId, rows) {
+  if (!db || !channelId || !rows?.length) return;
+  const fetchedAt = nowIso();
+  const statements = rows.map((row) =>
+    db
+      .prepare(
+        `INSERT OR REPLACE INTO discord_messages
+        (id, channel_id, ts, author, content, attachments_json, fetched_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+      )
+      .bind(
+        String(row.id || crypto.randomUUID()),
+        String(channelId),
+        String(row.timestamp || nowIso()),
+        String(row.author || "Unknown"),
+        String(row.content || ""),
+        JSON.stringify(Array.isArray(row.attachments) ? row.attachments : []),
+        fetchedAt
+      )
+  );
+  await db.batch(statements);
+  await db
+    .prepare(
+      `DELETE FROM discord_messages
+      WHERE channel_id = ?1
+      AND id NOT IN (
+        SELECT id FROM discord_messages
+        WHERE channel_id = ?1
+        ORDER BY ts DESC
+        LIMIT 2000
+      )`
+    )
+    .bind(String(channelId))
+    .run();
+}
+
+async function readDiscordRowsFromDb(db, channelId, limit = 120) {
+  if (!db) return [];
+  const maxRows = Math.max(1, Math.min(500, Number(limit) || 120));
+  const useChannel = String(channelId || "").trim();
+  const statement = useChannel
+    ? db
+        .prepare(
+          `SELECT id, ts, author, content, attachments_json
+          FROM discord_messages
+          WHERE channel_id = ?1
+          ORDER BY ts DESC
+          LIMIT ?2`
+        )
+        .bind(useChannel, maxRows)
+    : db
+        .prepare(
+          `SELECT id, ts, author, content, attachments_json
+          FROM discord_messages
+          ORDER BY ts DESC
+          LIMIT ?1`
+        )
+        .bind(maxRows);
+  const { results } = await statement.all();
+  return (Array.isArray(results) ? results : [])
+    .map((row) => ({
+      id: String(row.id || crypto.randomUUID()),
+      timestamp: String(row.ts || nowIso()),
+      author: String(row.author || "Unknown"),
+      content: String(row.content || ""),
+      attachments: (() => {
+        try {
+          const parsed = JSON.parse(String(row.attachments_json || "[]"));
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      })()
+    }))
+    .reverse();
+}
+
+async function persistSyncedTokenRows(db, rows) {
+  if (!db) return;
+  const normalized = Array.isArray(rows) ? rows : [];
+  const updatedAt = nowIso();
+  await db.prepare("DELETE FROM token_sync_rows").run();
+  if (!normalized.length) return;
+  const statements = normalized.map((row) =>
+    db
+      .prepare(
+        `INSERT OR REPLACE INTO token_sync_rows
+        (model, requests, tokens_daily, tokens_total, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5)`
+      )
+      .bind(
+        String(row.model || "").trim(),
+        Number(row.requests || 0) || 0,
+        Number(row.tokensDaily || 0) || 0,
+        Number(row.tokensTotal || 0) || 0,
+        updatedAt
+      )
+  );
+  await db.batch(statements);
+}
+
+async function readSyncedTokenRowsFromDb(db) {
+  if (!db) return [];
+  const { results } = await db
+    .prepare(
+      `SELECT model, requests, tokens_daily, tokens_total
+      FROM token_sync_rows
+      ORDER BY tokens_total DESC, requests DESC, model ASC`
+    )
+    .all();
+  return (Array.isArray(results) ? results : []).map((row) => ({
+    model: String(row.model || "").trim(),
+    requests: Number(row.requests || 0) || 0,
+    tokensDaily: Number(row.tokens_daily || 0) || 0,
+    tokensTotal: Number(row.tokens_total || 0) || 0
+  }));
+}
+
+async function persistTokenChatEvent(db, eventRow) {
+  if (!db || !eventRow) return;
+  await db
+    .prepare(
+      `INSERT OR REPLACE INTO token_chat_events
+      (id, ts, model_key, model_label, total_tokens)
+      VALUES (?1, ?2, ?3, ?4, ?5)`
+    )
+    .bind(
+      String(eventRow.id || crypto.randomUUID()),
+      String(eventRow.ts || nowIso()),
+      String(eventRow.modelKey || eventRow.model || "unknown"),
+      String(eventRow.modelLabel || eventRow.modelKey || eventRow.model || "unknown"),
+      Number(eventRow.totalTokens || 0) || 0
+    )
+    .run();
+  await db
+    .prepare(
+      `DELETE FROM token_chat_events
+      WHERE id NOT IN (
+        SELECT id FROM token_chat_events
+        ORDER BY ts DESC
+        LIMIT 20000
+      )`
+    )
+    .run();
+}
+
+async function refreshTokenEventsFromDb(state, env, force = false) {
+  const db = await ensureSqliteReady(state, env);
+  if (!db) return;
+  const now = Date.now();
+  if (!force && now - Number(state.tokenEventsRefreshedAt || 0) < DISCORD_CACHE_TTL_MS) {
+    return;
+  }
+  const { results } = await db
+    .prepare(
+      `SELECT ts, model_key, model_label, total_tokens
+      FROM token_chat_events
+      ORDER BY ts DESC
+      LIMIT 5000`
+    )
+    .all();
+  state.tokenEvents = (Array.isArray(results) ? results : [])
+    .map((row) => ({
+      ts: String(row.ts || nowIso()),
+      modelKey: String(row.model_key || "unknown"),
+      model: String(row.model_key || "unknown"),
+      modelLabel: String(row.model_label || row.model_key || "unknown"),
+      totalTokens: Number(row.total_tokens || 0) || 0
+    }))
+    .reverse();
+  state.tokenEventsRefreshedAt = now;
 }
 
 function providerConfig(env) {
@@ -166,10 +392,18 @@ function mapDiscordMessagesToRows(messages = []) {
 
 async function refreshDiscordFeed(state, env, force = false) {
   const cfg = discordSyncConfig(env);
+  const db = await ensureSqliteReady(state, env);
+
   if (!cfg.token || !cfg.channelId) {
-    state.discordFeedRows = [];
+    const fallbackRows = db ? await readDiscordRowsFromDb(db, cfg.channelId, 120) : [];
+    state.discordFeedRows = fallbackRows;
     state.discordFeedRefreshedAt = Date.now();
-    state.discordFeedStatus = { ok: false, detail: "missing token or channel" };
+    state.discordFeedStatus = {
+      ok: false,
+      detail: fallbackRows.length
+        ? `missing token or channel, loaded ${fallbackRows.length} rows from sqlite`
+        : "missing token or channel"
+    };
     return;
   }
 
@@ -184,13 +418,26 @@ async function refreshDiscordFeed(state, env, force = false) {
       endpoint: `${DISCORD_API_BASE}/channels/${cfg.channelId}/messages?limit=100`,
       method: "GET"
     });
-    state.discordFeedRows = mapDiscordMessagesToRows(Array.isArray(messages) ? messages : []);
+    const rows = mapDiscordMessagesToRows(Array.isArray(messages) ? messages : []);
+    state.discordFeedRows = rows;
+    if (db) {
+      await persistDiscordRows(db, cfg.channelId, rows);
+    }
     state.discordFeedRefreshedAt = now;
-    state.discordFeedStatus = { ok: true, detail: `${state.discordFeedRows.length} rows` };
+    state.discordFeedStatus = {
+      ok: true,
+      detail: db ? `${state.discordFeedRows.length} rows synced to sqlite` : `${state.discordFeedRows.length} rows`
+    };
   } catch (error) {
-    state.discordFeedRows = [];
+    const fallbackRows = db ? await readDiscordRowsFromDb(db, cfg.channelId, 120) : [];
+    state.discordFeedRows = fallbackRows;
     state.discordFeedRefreshedAt = now;
-    state.discordFeedStatus = { ok: false, detail: String(error?.message || error) };
+    state.discordFeedStatus = {
+      ok: false,
+      detail: fallbackRows.length
+        ? `${String(error?.message || error)}, fallback sqlite ${fallbackRows.length} rows`
+        : String(error?.message || error)
+    };
   }
 }
 
@@ -214,9 +461,24 @@ function normalizeTokenRows(payload) {
 async function refreshSyncedTokenRows(state, env) {
   const syncUrl = String(env.TOKEN_USAGE_SYNC_API_URL || "").trim();
   const syncKey = String(env.TOKEN_USAGE_SYNC_API_KEY || "").trim();
+  const db = await ensureSqliteReady(state, env);
+  const now = Date.now();
+  if (
+    now - Number(state.syncedTokenRowsRefreshedAt || 0) < TOKEN_SYNC_CACHE_TTL_MS &&
+    Array.isArray(state.syncedTokenRows) &&
+    state.syncedTokenRows.length
+  ) {
+    return;
+  }
+
   if (!syncUrl) {
-    state.syncedTokenRows = [];
-    state.syncedTokenStatus = { ok: false, detail: "sync url missing" };
+    const fallbackRows = db ? await readSyncedTokenRowsFromDb(db) : [];
+    state.syncedTokenRows = fallbackRows;
+    state.syncedTokenRowsRefreshedAt = now;
+    state.syncedTokenStatus = {
+      ok: false,
+      detail: fallbackRows.length ? `sync url missing, loaded ${fallbackRows.length} rows from sqlite` : "sync url missing"
+    };
     return;
   }
   try {
@@ -226,16 +488,37 @@ async function refreshSyncedTokenRows(state, env) {
     const payload = await resp.json().catch(() => ({}));
     if (!resp.ok) {
       const err = payload?.error || payload?.message || `HTTP ${resp.status}`;
-      state.syncedTokenRows = [];
-      state.syncedTokenStatus = { ok: false, detail: String(err) };
+      const fallbackRows = db ? await readSyncedTokenRowsFromDb(db) : [];
+      state.syncedTokenRows = fallbackRows;
+      state.syncedTokenRowsRefreshedAt = now;
+      state.syncedTokenStatus = {
+        ok: false,
+        detail: fallbackRows.length
+          ? `${String(err)}, fallback sqlite ${fallbackRows.length} rows`
+          : String(err)
+      };
       return;
     }
     const rows = normalizeTokenRows(payload);
     state.syncedTokenRows = rows;
-    state.syncedTokenStatus = { ok: true, detail: `${rows.length} rows` };
+    if (db) {
+      await persistSyncedTokenRows(db, rows);
+    }
+    state.syncedTokenRowsRefreshedAt = now;
+    state.syncedTokenStatus = {
+      ok: true,
+      detail: db ? `${rows.length} rows synced to sqlite` : `${rows.length} rows`
+    };
   } catch (error) {
-    state.syncedTokenRows = [];
-    state.syncedTokenStatus = { ok: false, detail: String(error?.message || error) };
+    const fallbackRows = db ? await readSyncedTokenRowsFromDb(db) : [];
+    state.syncedTokenRows = fallbackRows;
+    state.syncedTokenRowsRefreshedAt = now;
+    state.syncedTokenStatus = {
+      ok: false,
+      detail: fallbackRows.length
+        ? `${String(error?.message || error)}, fallback sqlite ${fallbackRows.length} rows`
+        : String(error?.message || error)
+    };
   }
 }
 
@@ -784,6 +1067,7 @@ export const onRequest = async (context) => {
 
   if (route === "/dashboard/summary" && method === "GET") {
     await refreshModelCatalog(state, env);
+    await refreshTokenEventsFromDb(state, env);
     await refreshSyncedTokenRows(state, env);
     return json(buildSummary(state));
   }
@@ -839,13 +1123,19 @@ export const onRequest = async (context) => {
 
       const reply = chatResult.reply;
       const usage = chatResult.usage;
-      state.tokenEvents.push({
+      const tokenEventRow = {
+        id: crypto.randomUUID(),
         ts: nowIso(),
         model: selected.key,
         modelKey: selected.key,
         modelLabel: selected.label,
         totalTokens: usage.total
-      });
+      };
+      state.tokenEvents.push(tokenEventRow);
+      const db = await ensureSqliteReady(state, env);
+      if (db) {
+        await persistTokenChatEvent(db, tokenEventRow);
+      }
       if (state.tokenEvents.length > 5000) {
         state.tokenEvents.splice(0, state.tokenEvents.length - 5000);
       }

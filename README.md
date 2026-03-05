@@ -32,6 +32,26 @@ npm start
 - `POST /api/project/doc/sync`
 - `POST /api/chat/send`（保留：用指定 agent 发 Discord 消息）
 
+## Cloudflare Pages + SQLite（D1）
+
+已接入云端 SQLite 持久化（D1）：
+
+- Discord 协作消息：拉取后写入 `discord_messages`
+- Token 同步数据：拉取后写入 `token_sync_rows`
+- Chatbox token 事件：写入 `token_chat_events`
+
+推荐在 Pages 项目添加 D1 绑定（变量名）：
+
+- `DASHBOARD_DB`（推荐）
+- 或 `DB`（兼容）
+
+同时确保环境变量已配置：
+
+- `DISCORD_SYNC_BOT_TOKEN`
+- `DISCORD_SYNC_CHANNEL_ID`
+- `TOKEN_USAGE_SYNC_API_URL`
+- `TOKEN_USAGE_SYNC_API_KEY`（可选）
+
 ## 数据规则
 
 - Memory: 统计 `T0/T1/T2/T3`（policy 归 `T3`），向量优良率每 30 分钟随机抽样。
