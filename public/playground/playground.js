@@ -8,13 +8,15 @@ const FALLBACK_MODELS = [
 ];
 
 const FALLBACK_DEFAULTS = ["GPT-5.3-Codex", "Claude-Opus-4.6"];
+const STREAM_IDLE_TIMEOUT_MS = 25000;
 
 const state = {
   allModels: [...FALLBACK_MODELS],
   selected: [...FALLBACK_DEFAULTS],
   running: false,
   resultsByName: new Map(),
-  streamDone: false
+  streamDone: false,
+  lastStreamEventAt: 0
 };
 
 const el = {
@@ -205,6 +207,7 @@ function applyBatchResults(data) {
 }
 
 function processSseFrame(frame) {
+  state.lastStreamEventAt = Date.now();
   const lines = String(frame || "").split(/\r?\n/);
   let event = "message";
   const dataLines = [];
@@ -284,6 +287,20 @@ function processSseFrame(frame) {
   }
 }
 
+function finalizePendingRows(reason = "Stream ended before completion.") {
+  for (const name of state.selected) {
+    const row = state.resultsByName.get(name) || emptyResult(name);
+    if (row.status === "done" || row.status === "failed") continue;
+    const hasPartial = String(row.reply || "").trim().length > 0;
+    patchResult(name, {
+      status: hasPartial ? "done" : "failed",
+      ok: hasPartial,
+      error: hasPartial ? "" : reason
+    });
+  }
+  renderResults(state.resultsByName);
+}
+
 async function consumeEventStream(resp) {
   const reader = resp.body?.getReader();
   if (!reader) {
@@ -314,10 +331,18 @@ async function runPlayground() {
 
   state.running = true;
   state.streamDone = false;
+  state.lastStreamEventAt = Date.now();
   state.resultsByName = new Map(state.selected.map((name) => [name, { ...emptyResult(name), status: "queued" }]));
   setStatus(`Running ${state.selected.length} model(s)...`);
   renderResults(state.resultsByName);
   el.runBtn.disabled = true;
+  const abortController = new AbortController();
+  const idleWatchdog = setInterval(() => {
+    if (!state.running) return;
+    if (Date.now() - Number(state.lastStreamEventAt || 0) > STREAM_IDLE_TIMEOUT_MS) {
+      abortController.abort(`stream idle timeout (${Math.floor(STREAM_IDLE_TIMEOUT_MS / 1000)}s)`);
+    }
+  }, 1000);
 
   try {
     const resp = await fetch("/api/playground/run", {
@@ -326,6 +351,7 @@ async function runPlayground() {
         "Content-Type": "application/json",
         Accept: "text/event-stream, application/json"
       },
+      signal: abortController.signal,
       body: JSON.stringify({
         prompt,
         models: [...state.selected],
@@ -341,7 +367,8 @@ async function runPlayground() {
     if (contentType.includes("text/event-stream")) {
       await consumeEventStream(resp);
       if (!state.streamDone) {
-        setStatus("Completed");
+        finalizePendingRows("Stream closed unexpectedly.");
+        setStatus("Stream closed unexpectedly.");
       }
     } else {
       throw new Error("stream required but server returned non-stream response");
@@ -360,6 +387,7 @@ async function runPlayground() {
     setStatus(`Error: ${errorText}`);
     renderResults(state.resultsByName);
   } finally {
+    clearInterval(idleWatchdog);
     state.running = false;
     el.runBtn.disabled = false;
   }
