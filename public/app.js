@@ -669,9 +669,30 @@ function bindEvents() {
 
     input.addEventListener("input", () => {
       const digits = String(input.value || "").replace(/\D+/g, "");
-      input.value = digits.slice(-1);
-      if (input.value && index < el.unlockDigitInputs.length - 1) {
-        el.unlockDigitInputs[index + 1].focus();
+      if (!digits) {
+        input.value = "";
+        maybeAutoUnlock();
+        return;
+      }
+      if (digits.length === 1) {
+        input.value = digits;
+        if (index < el.unlockDigitInputs.length - 1) {
+          el.unlockDigitInputs[index + 1].focus();
+        }
+        maybeAutoUnlock();
+        return;
+      }
+      const maxFill = el.unlockDigitInputs.length - index;
+      const fill = digits.slice(0, maxFill).split("");
+      fill.forEach((char, offset) => {
+        const target = el.unlockDigitInputs[index + offset];
+        if (target) target.value = char;
+      });
+      const nextIndex = index + fill.length;
+      if (nextIndex < el.unlockDigitInputs.length) {
+        el.unlockDigitInputs[nextIndex]?.focus();
+      } else {
+        el.unlockDigitInputs[el.unlockDigitInputs.length - 1]?.focus();
       }
       maybeAutoUnlock();
     });
@@ -692,13 +713,14 @@ function bindEvents() {
       if (!text) return;
       event.preventDefault();
       text.split("").forEach((char, offset) => {
-        const target = el.unlockDigitInputs[offset];
+        const target = el.unlockDigitInputs[index + offset];
         if (target) target.value = char;
       });
-      if (text.length < 6) {
-        el.unlockDigitInputs[text.length]?.focus();
+      const nextIndex = index + text.length;
+      if (nextIndex < el.unlockDigitInputs.length) {
+        el.unlockDigitInputs[nextIndex]?.focus();
       } else {
-        el.unlockDigitInputs[5]?.focus();
+        el.unlockDigitInputs[el.unlockDigitInputs.length - 1]?.focus();
       }
       maybeAutoUnlock();
     });
