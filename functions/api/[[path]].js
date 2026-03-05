@@ -56,6 +56,8 @@ function getState() {
       syncedTokenRows: [],
       syncedTokenStatus: { ok: false, detail: "not checked" },
       syncedTokenRowsRefreshedAt: 0,
+      dynamicCronRows: [],
+      dynamicProjectRows: [],
       sqliteReady: false
     };
   }
@@ -1046,6 +1048,42 @@ function buildTokenRows(state, modelCatalog = []) {
 
 function buildSummary(state) {
   const alerts = [...state.alerts].sort((a, b) => Date.parse(b.time || "") - Date.parse(a.time || "")).slice(0, 20);
+  const staticTasks = [
+    { content: "Pipeline memory sync", cadence: "Every 1m" },
+    { content: "Vector quality probe", cadence: "Every 30m" },
+    { content: "Discord workplace sync", cadence: "Every 5s" }
+  ];
+  const taskKeySet = new Set();
+  const dynamicTasks = (state.dynamicCronRows || []).filter((row) => row?.content);
+  const mergedTasks = [...dynamicTasks, ...staticTasks].filter((row) => {
+    const key = `${String(row.content || "").trim().toLowerCase()}::${String(row.cadence || "").trim().toLowerCase()}`;
+    if (!key || taskKeySet.has(key)) return false;
+    taskKeySet.add(key);
+    return true;
+  });
+
+  const baseProjects = [
+    {
+      name: "Intelligent Ensemble",
+      progress: 82,
+      status: "in_progress",
+      updatedAt: nowIso()
+    }
+  ];
+  const projectMap = new Map();
+  for (const row of [...baseProjects, ...(state.dynamicProjectRows || [])]) {
+    const name = String(row?.name || "").trim();
+    if (!name) continue;
+    projectMap.set(name.toLowerCase(), {
+      name,
+      progress: Number(row.progress || 0),
+      status: String(row.status || "in_progress"),
+      updatedAt: String(row.updatedAt || nowIso())
+    });
+  }
+  const projectRows = [...projectMap.values()].sort((a, b) => Date.parse(b.updatedAt || "") - Date.parse(a.updatedAt || ""));
+  const completedCount = projectRows.filter((row) => row.status === "completed" || Number(row.progress || 0) >= 100).length;
+
   return {
     updatedAt: nowIso(),
     memory: {
@@ -1060,22 +1098,11 @@ function buildSummary(state) {
       totalFiles: 744
     },
     tokens: buildTokenRows(state, state.modelCatalog || []),
-    tasks: [
-      { content: "Pipeline memory sync", cadence: "Every 1m" },
-      { content: "Vector quality probe", cadence: "Every 30m" },
-      { content: "Discord workplace sync", cadence: "Every 5s" }
-    ],
+    tasks: mergedTasks.slice(0, 20),
     projects: {
-      completed: 0,
-      total: 1,
-      rows: [
-        {
-          name: "Intelligent Ensemble",
-          progress: 82,
-          status: "in_progress",
-          updatedAt: nowIso()
-        }
-      ]
+      completed: completedCount,
+      total: projectRows.length,
+      rows: projectRows
     },
     alerts: alerts.length
       ? alerts
@@ -1178,6 +1205,110 @@ function addWorkplaceRow(state, author, content) {
   if (state.workplace.length > 500) {
     state.workplace.splice(0, state.workplace.length - 500);
   }
+}
+
+function classifyKarinaBoard(message) {
+  const text = String(message || "").trim();
+  const lower = text.toLowerCase();
+
+  if (/^\[(cron|task)\]/i.test(text) || /^(cron|task)\s*[:：]/i.test(text)) return "cron";
+  if (/^\[(project|项目)\]/i.test(text) || /^(project|项目)\s*[:：]/i.test(text)) return "project";
+
+  const cronKeywords = [
+    "cron",
+    "schedule",
+    "scheduled",
+    "every ",
+    "hourly",
+    "daily",
+    "weekly",
+    "定时",
+    "周期",
+    "每分钟",
+    "每小时",
+    "每周",
+    "轮询",
+    "巡检"
+  ];
+  const projectKeywords = ["project", "milestone", "roadmap", "deliver", "dashboard", "项目", "开发", "部署", "上线", "交付"];
+
+  const cronScore = cronKeywords.reduce((count, key) => count + (lower.includes(key) ? 1 : 0), 0);
+  const projectScore = projectKeywords.reduce((count, key) => count + (lower.includes(key) ? 1 : 0), 0);
+
+  if (cronScore > projectScore && cronScore > 0) return "cron";
+  return "project";
+}
+
+function inferCronCadence(message) {
+  const text = String(message || "").trim();
+  const lower = text.toLowerCase();
+
+  const everyMatch = lower.match(/\bevery\s+([0-9]+)\s*(second|seconds|sec|secs|minute|minutes|min|mins|hour|hours|day|days|week|weeks)\b/);
+  if (everyMatch) {
+    const num = everyMatch[1];
+    const unit = everyMatch[2];
+    return `Every ${num} ${unit}`;
+  }
+
+  const zhMatch = text.match(/每([0-9一二三四五六七八九十半两]+)(秒|分钟|小时|天|周|月)/);
+  if (zhMatch) return `每${zhMatch[1]}${zhMatch[2]}`;
+
+  if (lower.includes("daily") || text.includes("每天")) return "Daily";
+  if (lower.includes("hourly") || text.includes("每小时")) return "Hourly";
+  if (lower.includes("weekly") || text.includes("每周")) return "Weekly";
+  return "On demand";
+}
+
+function inferProjectMeta(message) {
+  const text = String(message || "").trim();
+  const bracketName = text.match(/[【\[]([^】\]]+)[】\]]/);
+  const namedMatch = text.match(/(?:项目|project)\s*[:：\-]?\s*([^\n，。,.;；]{2,40})/i);
+  const name = String(namedMatch?.[1] || bracketName?.[1] || text.slice(0, 36) || "General Project").trim();
+  const progressMatch = text.match(/(\d{1,3})\s*%/);
+  const done = /(完成|done|completed|finish|finished|已上线|已交付)/i.test(text);
+  const progress = done ? 100 : Math.max(1, Math.min(99, Number(progressMatch?.[1] || 15)));
+  const status = done ? "completed" : "in_progress";
+  return { name, progress, status };
+}
+
+function upsertCronRow(state, content, cadence) {
+  const text = String(content || "").trim();
+  if (!text) return;
+  const now = nowIso();
+  const rows = Array.isArray(state.dynamicCronRows) ? state.dynamicCronRows : [];
+  const idx = rows.findIndex((row) => String(row.content || "").trim().toLowerCase() === text.toLowerCase());
+  const next = {
+    content: text,
+    cadence: String(cadence || "On demand"),
+    updatedAt: now
+  };
+  if (idx >= 0) {
+    rows[idx] = { ...rows[idx], ...next };
+  } else {
+    rows.unshift(next);
+  }
+  state.dynamicCronRows = rows.slice(0, 40);
+}
+
+function upsertProjectRow(state, payload) {
+  const meta = payload || {};
+  const name = String(meta.name || "").trim();
+  if (!name) return;
+  const now = nowIso();
+  const rows = Array.isArray(state.dynamicProjectRows) ? state.dynamicProjectRows : [];
+  const idx = rows.findIndex((row) => String(row.name || "").trim().toLowerCase() === name.toLowerCase());
+  const next = {
+    name,
+    progress: Math.max(0, Math.min(100, Number(meta.progress || 0))),
+    status: String(meta.status || "in_progress"),
+    updatedAt: now
+  };
+  if (idx >= 0) {
+    rows[idx] = { ...rows[idx], ...next };
+  } else {
+    rows.unshift(next);
+  }
+  state.dynamicProjectRows = rows.slice(0, 40);
 }
 
 function estimateUsage(input, output) {
@@ -1336,13 +1467,23 @@ export const onRequest = async (context) => {
       if (!message) {
         return json({ ok: false, error: "message required" }, 400);
       }
+
+      const board = classifyKarinaBoard(message);
+      if (board === "cron") {
+        upsertCronRow(state, message, inferCronCadence(message));
+      } else {
+        upsertProjectRow(state, inferProjectMeta(message));
+      }
+
       const sent = await sendDiscordChannelMessage(env, message);
       addWorkplaceRow(state, "Owner", message);
+      addWorkplaceRow(state, "Karina Router", `Routed to ${board.toUpperCase()} panel`);
       return json({
         ok: true,
-        reply: "已发送给 Karina，等待协作输出。",
-        messageId: String(sent?.id || ""),
-        sentAt: nowIso()
+        reply: board === "cron" ? "已发送给 Karina，任务已同步到 Cron 面板。" : "已发送给 Karina，任务已同步到 Project 面板。",
+        board,
+        sentAt: nowIso(),
+        delivered: !!sent?.id
       });
     } catch (error) {
       const detail = String(error?.message || error);
