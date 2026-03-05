@@ -34,7 +34,8 @@ const FALLBACK_BAILIAN_MODELS = [
 const FALLBACK_CODEX_MODELS = ["gpt-5.3-codex", "gpt-5-codex"];
 const DEFAULT_CODEX_BASE_URL = "https://gmn.chuangzuoli.com";
 const DEFAULT_CODEX_MODEL_PATH = "/v1/models";
-const DEFAULT_CODEX_CHAT_PATH = "/v1/responses";
+const DEFAULT_CODEX_CHAT_PATH = "";
+const DEFAULT_CODEX_REASONING_EFFORT = "xhigh";
 const DEFAULT_CLAUDE_BASE_URL = "https://cursor.scihub.edu.kg/api";
 const DEFAULT_PLAYGROUND_CLAUDE_MODEL = "claude-opus-4-6";
 
@@ -154,7 +155,8 @@ function buildModelPathCandidates(config) {
 }
 
 function buildChatPathCandidates(config) {
-  const current = String(config?.chatPath || "/chat/completions").trim() || "/chat/completions";
+  const hasConfiguredPath = config && Object.prototype.hasOwnProperty.call(config, "chatPath");
+  const current = hasConfiguredPath ? String(config.chatPath || "").trim() : "/chat/completions";
   if (config?.name === "codex") {
     return [current];
   }
@@ -665,7 +667,8 @@ function providerConfig(env) {
     baseUrl: normalizeBaseUrl(env.CODEX_BASE_URL || DEFAULT_CODEX_BASE_URL),
     apiKey: String(env.CODEX_API_KEY || "").trim(),
     modelPath: String(env.CODEX_MODEL_PATH || DEFAULT_CODEX_MODEL_PATH).trim(),
-    chatPath: String(env.CODEX_CHAT_PATH || DEFAULT_CODEX_CHAT_PATH).trim(),
+    chatPath: DEFAULT_CODEX_CHAT_PATH,
+    reasoningEffort: String(env.CODEX_REASONING_EFFORT || DEFAULT_CODEX_REASONING_EFFORT).trim() || DEFAULT_CODEX_REASONING_EFFORT,
     fallbackModels: parseCsv(env.CODEX_MODELS).length ? parseCsv(env.CODEX_MODELS) : FALLBACK_CODEX_MODELS
   };
 
@@ -1466,6 +1469,33 @@ function formatSseEvent(event, data) {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
+function buildProviderRequestBody(config, modelId, message, stream, chatPath) {
+  const isCodex = config?.name === "codex";
+  const useResponsesApi = isCodex || /\/responses\b/i.test(String(chatPath || ""));
+  if (isCodex) {
+    const effort = String(config?.reasoningEffort || DEFAULT_CODEX_REASONING_EFFORT).trim() || DEFAULT_CODEX_REASONING_EFFORT;
+    return {
+      model: modelId,
+      input: message,
+      stream: !!stream,
+      reasoning: { effort },
+      model_reasoning_effort: effort
+    };
+  }
+  if (useResponsesApi) {
+    return {
+      model: modelId,
+      input: message,
+      stream: !!stream
+    };
+  }
+  return {
+    model: modelId,
+    messages: [{ role: "user", content: message }],
+    stream: !!stream
+  };
+}
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms || 0))));
 }
@@ -1507,18 +1537,7 @@ async function callProviderChat(config, modelId, message) {
 
   for (const chatPath of chatPaths) {
     const endpoint = `${config.baseUrl}${chatPath}`;
-    const useResponsesApi = /\/responses\b/i.test(chatPath);
-    const requestBody = useResponsesApi
-      ? {
-          model: modelId,
-          input: message,
-          stream: false
-        }
-      : {
-          model: modelId,
-          messages: [{ role: "user", content: message }],
-          stream: false
-        };
+    const requestBody = buildProviderRequestBody(config, modelId, message, false, chatPath);
     try {
       const resp = await fetch(endpoint, {
         method: "POST",
@@ -1577,18 +1596,7 @@ async function callProviderChatStream(config, modelId, message, onDelta) {
   let lastError = "";
   for (const chatPath of chatPaths) {
     const endpoint = `${config.baseUrl}${chatPath}`;
-    const useResponsesApi = /\/responses\b/i.test(chatPath);
-    const requestBody = useResponsesApi
-      ? {
-          model: modelId,
-          input: message,
-          stream: true
-        }
-      : {
-          model: modelId,
-          messages: [{ role: "user", content: message }],
-          stream: true
-        };
+    const requestBody = buildProviderRequestBody(config, modelId, message, true, chatPath);
 
     try {
       const resp = await fetch(endpoint, {
