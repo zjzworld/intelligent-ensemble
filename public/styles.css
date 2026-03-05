@@ -219,7 +219,7 @@ body::before {
   font-size: 14px;
   letter-spacing: 0.06em;
   font-weight: 400;
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
   color: rgba(29, 29, 31, 0.9);
 }
@@ -237,11 +237,16 @@ body::before {
 }
 
 .nav-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
   height: auto;
   padding: 7px 12px;
   border: 1px solid rgba(var(--border-rgb), 0.14);
-  border-radius: 999px;
+  border-radius: 999px !important;
   background: transparent;
   cursor: pointer;
   font-size: 13px;
@@ -250,19 +255,17 @@ body::before {
   letter-spacing: 0;
   text-transform: none;
   color: #6e6e73;
-  line-height: 1;
+  line-height: 1.2;
   transition:
     color var(--motion-fast) var(--ease-fluid),
     border-color var(--motion-fast) var(--ease-fluid),
-    background var(--motion-fast) var(--ease-fluid),
-    transform var(--motion-fast) var(--ease-fluid);
+    background var(--motion-fast) var(--ease-fluid);
 }
 
 .nav-btn:hover {
   color: var(--text-primary);
   border-color: rgba(var(--border-rgb), 0.24);
   background: rgba(255, 255, 255, 0.64);
-  transform: none;
 }
 
 .workspace {
