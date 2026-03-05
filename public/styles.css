@@ -48,6 +48,8 @@
   --motion-fast: 120ms;
   --motion-normal: 180ms;
   --motion-slow: 280ms;
+  --motion-panel: 320ms;
+  --motion-button: 220ms;
   --ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
   --glass-blur: 30px;
 }
@@ -305,14 +307,17 @@ body::before {
   backdrop-filter: blur(var(--glass-blur));
   box-shadow: 0 14px 36px rgba(var(--shadow-rgb), 0.11), inset 0 1px 1px rgba(255, 255, 255, 0.9);
   transition:
-    transform var(--motion-slow) var(--ease-fluid),
-    border-color var(--motion-slow) var(--ease-fluid),
-    background var(--motion-slow) var(--ease-fluid);
+    transform var(--motion-panel) var(--ease-fluid),
+    border-color var(--motion-panel) var(--ease-fluid),
+    box-shadow var(--motion-panel) var(--ease-fluid),
+    background var(--motion-panel) var(--ease-fluid);
 }
 
 .panel:hover {
-  border-color: rgba(var(--border-rgb), 0.22);
+  transform: translateY(-3px);
+  border-color: rgba(var(--border-rgb), 0.25);
   background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 22px 44px rgba(var(--shadow-rgb), 0.16), inset 0 1px 1px rgba(255, 255, 255, 0.92);
 }
 
 .panel-head {
