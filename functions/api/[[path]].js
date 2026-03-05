@@ -526,6 +526,26 @@ async function discordRequest({ token, endpoint, method = "GET", jsonBody = null
   return payload;
 }
 
+async function sendDiscordChannelMessage(env, content) {
+  const cfg = discordSyncConfig(env);
+  if (!cfg.token || !cfg.channelId) {
+    throw new Error("discord sync token or channel missing");
+  }
+  const text = String(content || "").trim();
+  if (!text) {
+    throw new Error("message required");
+  }
+  if (text.length > 1900) {
+    throw new Error("message too long");
+  }
+  return discordRequest({
+    token: cfg.token,
+    endpoint: `${DISCORD_API_BASE}/channels/${cfg.channelId}/messages`,
+    method: "POST",
+    jsonBody: { content: text }
+  });
+}
+
 function mapDiscordMessagesToRows(messages = []) {
   const sorted = [...messages].sort(
     (a, b) => Date.parse(a?.timestamp || 0) - Date.parse(b?.timestamp || 0)
@@ -1307,6 +1327,28 @@ export const onRequest = async (context) => {
   if (route === "/workplace/messages" && method === "GET") {
     await refreshDiscordFeed(state, env);
     return json(buildWorkplace(state, url.searchParams.get("limit")));
+  }
+
+  if (route === "/chat/karina" && method === "POST") {
+    try {
+      const body = await readPayload(request);
+      const message = String(body?.message || "").trim();
+      if (!message) {
+        return json({ ok: false, error: "message required" }, 400);
+      }
+      const sent = await sendDiscordChannelMessage(env, message);
+      addWorkplaceRow(state, "Owner", message);
+      return json({
+        ok: true,
+        reply: "已发送给 Karina，等待协作输出。",
+        messageId: String(sent?.id || ""),
+        sentAt: nowIso()
+      });
+    } catch (error) {
+      const detail = String(error?.message || error);
+      recordAlert(state, "KARINA_CHAT_ERROR", detail, "medium");
+      return json({ ok: false, error: detail }, 400);
+    }
   }
 
   if (route === "/chat/intelligent" && method === "POST") {

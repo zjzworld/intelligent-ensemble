@@ -42,17 +42,32 @@
           <section class="panel chatbox-panel">
             <div class="panel-head">
               <h2 id="chatboxTitle"></h2>
-              <label class="model-picker">
-                <span id="modelLabel"></span>
-                <select id="modelSelect"></select>
-              </label>
+              <span id="chatAgentBadge" class="chat-agent-badge"></span>
             </div>
+            <div class="chatbox-shell">
+              <div class="chat-side-column">
+                <section class="side-card">
+                  <h3 id="hooksTitle"></h3>
+                  <div id="hooksList" class="side-list"></div>
+                </section>
+                <section class="side-card">
+                  <h3 id="skillsTitle"></h3>
+                  <div id="skillsList" class="side-list"></div>
+                </section>
+                <section class="side-card">
+                  <h3 id="rulesTitle"></h3>
+                  <div id="rulesList" class="side-list"></div>
+                </section>
+              </div>
 
-            <div id="chatboxMessages" class="chatbox-messages"></div>
+              <div class="chat-main-column">
+                <div id="chatboxMessages" class="chatbox-messages"></div>
 
-            <div class="chatbox-composer">
-              <textarea id="chatboxInput"></textarea>
-              <button id="sendChatBtn" class="send-btn" type="button">↑</button>
+                <div class="chatbox-composer">
+                  <textarea id="chatboxInput"></textarea>
+                  <button id="sendChatBtn" class="send-btn" type="button">↑</button>
+                </div>
+              </div>
             </div>
             <div id="chatboxStatus" class="status-text"></div>
           </section>
@@ -70,17 +85,19 @@
             <div class="panel-head compact">
               <h2 id="tokenTitle"></h2>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th id="thModel"></th>
-                  <th id="thRequests"></th>
-                  <th id="thTokenDaily"></th>
-                  <th id="thTokenTotal"></th>
-                </tr>
-              </thead>
-              <tbody id="tokenTable"></tbody>
-            </table>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="thModel"></th>
+                    <th id="thRequests"></th>
+                    <th id="thTokenDaily"></th>
+                    <th id="thTokenTotal"></th>
+                  </tr>
+                </thead>
+                <tbody id="tokenTable"></tbody>
+              </table>
+            </div>
           </section>
 
           <section class="panel agent-panel">
@@ -95,15 +112,17 @@
             <div class="panel-head compact">
               <h2 id="taskTitle"></h2>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th id="thTaskContent"></th>
-                  <th id="thTaskCadence"></th>
-                </tr>
-              </thead>
-              <tbody id="taskTable"></tbody>
-            </table>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="thTaskContent"></th>
+                    <th id="thTaskCadence"></th>
+                  </tr>
+                </thead>
+                <tbody id="taskTable"></tbody>
+              </table>
+            </div>
           </section>
 
           <section class="panel mcp-panel">
@@ -111,16 +130,18 @@
               <h2 id="mcpTitle"></h2>
               <span id="mcpHint" class="panel-hint"></span>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th id="thMcpApp"></th>
-                  <th id="thMcpAgent"></th>
-                  <th id="thMcpStatus"></th>
-                </tr>
-              </thead>
-              <tbody id="mcpTable"></tbody>
-            </table>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="thMcpApp"></th>
+                    <th id="thMcpAgent"></th>
+                    <th id="thMcpStatus"></th>
+                  </tr>
+                </thead>
+                <tbody id="mcpTable"></tbody>
+              </table>
+            </div>
           </section>
 
           <section class="panel project-panel">
@@ -135,16 +156,18 @@
             <div class="panel-head compact">
               <h2 id="alertTitle"></h2>
             </div>
-            <table>
-              <thead>
-                <tr>
-                  <th id="thAlertTime"></th>
-                  <th id="thAlertType"></th>
-                  <th id="thAlertDetail"></th>
-                </tr>
-              </thead>
-              <tbody id="alertTable"></tbody>
-            </table>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="thAlertTime"></th>
+                    <th id="thAlertType"></th>
+                    <th id="thAlertDetail"></th>
+                  </tr>
+                </thead>
+                <tbody id="alertTable"></tbody>
+              </table>
+            </div>
           </section>
         </section>
 

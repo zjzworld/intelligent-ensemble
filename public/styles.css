@@ -216,7 +216,8 @@ body {
   border: 1px solid var(--line-strong);
   background: #fff;
   padding: 8px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-width: 0;
   min-height: 0;
 }
@@ -255,6 +256,7 @@ body {
   grid-row: 1 / 4;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .memory-panel {
@@ -304,6 +306,58 @@ body {
   gap: 6px;
   font-size: 12px;
   color: var(--muted);
+}
+
+.chat-agent-badge {
+  border: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--muted);
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.chatbox-shell {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 8px;
+}
+
+.chat-side-column {
+  display: grid;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+}
+
+.side-card {
+  border: 1px solid var(--line);
+  padding: 6px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.side-card h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.side-list {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+  display: grid;
+  gap: 4px;
+}
+
+.chat-main-column {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 select,
@@ -425,6 +479,13 @@ table {
   border-collapse: collapse;
 }
 
+.table-scroll {
+  border: 1px solid var(--line);
+  height: calc(100% - 32px);
+  min-height: 0;
+  overflow: auto;
+}
+
 th,
 td {
   text-align: left;
@@ -520,6 +581,38 @@ th {
   padding: 8px;
 }
 
+.panel::-webkit-scrollbar,
+.table-scroll::-webkit-scrollbar,
+.chatbox-messages::-webkit-scrollbar,
+.agent-list::-webkit-scrollbar,
+.project-list::-webkit-scrollbar,
+.workplace-feed::-webkit-scrollbar,
+.side-card::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.panel::-webkit-scrollbar-thumb,
+.table-scroll::-webkit-scrollbar-thumb,
+.chatbox-messages::-webkit-scrollbar-thumb,
+.agent-list::-webkit-scrollbar-thumb,
+.project-list::-webkit-scrollbar-thumb,
+.workplace-feed::-webkit-scrollbar-thumb,
+.side-card::-webkit-scrollbar-thumb {
+  background: #c9c9c9;
+  border: 1px solid #b5b5b5;
+}
+
+.panel::-webkit-scrollbar-track,
+.table-scroll::-webkit-scrollbar-track,
+.chatbox-messages::-webkit-scrollbar-track,
+.agent-list::-webkit-scrollbar-track,
+.project-list::-webkit-scrollbar-track,
+.workplace-feed::-webkit-scrollbar-track,
+.side-card::-webkit-scrollbar-track {
+  background: #f3f3f3;
+}
+
 .work-item {
   border-bottom: 1px dashed #ececec;
   padding: 6px 0;
@@ -585,5 +678,14 @@ th {
 
   .workplace-panel {
     min-height: 320px;
+  }
+
+  .chatbox-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-side-column {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: none;
   }
 }

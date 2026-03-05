@@ -1,15 +1,18 @@
 const UI = {
-  chatboxTitle: "Intelligent Chatbox",
-  modelLabel: "Model",
+  chatboxTitle: "Karina Central Chat",
+  chatAgentBadge: "Karina - Orchestrator",
   chatPlaceholder: "Type your message…",
+  hooksTitle: "Hooks",
+  skillsTitle: "Skills",
+  rulesTitle: "Rules",
   memoryTitle: "Memory",
   memoryHint: "refresh every 1 minute",
   agentTitle: "Agent",
   agentHint: "refresh every 1 minute",
-  mcpTitle: "外部连接",
+  mcpTitle: "MCP",
   mcpHint: "refresh every 1 minute",
   tokenTitle: "Token",
-  taskTitle: "Task",
+  taskTitle: "Cron",
   projectTitle: "Project",
   alertTitle: "Alert",
   workplaceTitle: "Workplace",
@@ -68,8 +71,13 @@ const el = {
   zjzBtn: document.getElementById("zjzBtn"),
   updatedAt: document.getElementById("updatedAt"),
   chatboxTitle: document.getElementById("chatboxTitle"),
-  modelLabel: document.getElementById("modelLabel"),
-  modelSelect: document.getElementById("modelSelect"),
+  chatAgentBadge: document.getElementById("chatAgentBadge"),
+  hooksTitle: document.getElementById("hooksTitle"),
+  skillsTitle: document.getElementById("skillsTitle"),
+  rulesTitle: document.getElementById("rulesTitle"),
+  hooksList: document.getElementById("hooksList"),
+  skillsList: document.getElementById("skillsList"),
+  rulesList: document.getElementById("rulesList"),
   chatboxMessages: document.getElementById("chatboxMessages"),
   chatboxInput: document.getElementById("chatboxInput"),
   sendChatBtn: document.getElementById("sendChatBtn"),
@@ -126,6 +134,24 @@ function formatNum(value) {
   const num = Number(value || 0);
   if (!Number.isFinite(num)) return "0";
   return num.toLocaleString();
+}
+
+function normalizeModelDisplay(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return "-";
+  const core = text.includes("::") ? text.split("::").slice(1).join("::") : text.split("·")[0].trim();
+  const lower = core.toLowerCase();
+  if (lower.includes("gpt-5.3-codex")) return "GPT-5.3-Codex";
+  if (lower.includes("claude-opus-4.6")) return "Claude-Opus-4.6";
+  if (lower.includes("qwen3.5-plus")) return "Qwen3.5-plus";
+  if (lower.includes("qwen3-max-2026-01-23")) return "Qwen3-max-2026-01-23";
+  if (lower.includes("qwen3-coder-next")) return "Qwen3-coder-next";
+  if (lower.includes("qwen3-coder-plus")) return "Qwen3-coder-plus";
+  if (lower.includes("minimax-m2.5")) return "Minimax-M2.5";
+  if (lower.includes("glm-5")) return "Glm-5";
+  if (lower.includes("glm-4.7")) return "Glm-4.7";
+  if (lower.includes("kimi-k2.5")) return "Kimi-K2.5";
+  return core;
 }
 
 function statusSymbol(ok) {
@@ -238,8 +264,14 @@ function unlockDashboard(token) {
 function applyLabels() {
   document.documentElement.lang = "en";
   el.chatboxTitle.textContent = t("chatboxTitle");
-  el.modelLabel.textContent = t("modelLabel");
+  el.chatAgentBadge.textContent = t("chatAgentBadge");
   el.chatboxInput.placeholder = t("chatPlaceholder");
+  el.hooksTitle.textContent = t("hooksTitle");
+  el.skillsTitle.textContent = t("skillsTitle");
+  el.rulesTitle.textContent = t("rulesTitle");
+  el.hooksList.innerHTML = "<div>Post-run audit</div><div>Token sync ingest</div><div>Discord relay</div>";
+  el.skillsList.innerHTML = "<div>Planner</div><div>Reviewer loop</div><div>Deployment</div>";
+  el.rulesList.innerHTML = "<div>收到后执行</div><div>完成再交接</div><div>短句交接</div>";
   el.memoryTitle.textContent = t("memoryTitle");
   el.memoryHint.textContent = t("memoryHint");
   el.agentTitle.textContent = t("agentTitle");
@@ -317,7 +349,19 @@ function renderTokens(tokens) {
     el.tokenTable.innerHTML = `<tr><td colspan="4">${t("noData")}</td></tr>`;
     return;
   }
-  el.tokenTable.innerHTML = tokens
+  const merged = new Map();
+  for (const row of tokens) {
+    const modelName = normalizeModelDisplay(row.model);
+    if (!merged.has(modelName)) {
+      merged.set(modelName, { model: modelName, requests: 0, tokensDaily: 0, tokensTotal: 0 });
+    }
+    const target = merged.get(modelName);
+    target.requests += Number(row.requests || 0);
+    target.tokensDaily += Number(row.tokensDaily || 0);
+    target.tokensTotal += Number(row.tokensTotal || 0);
+  }
+  const rows = [...merged.values()].sort((a, b) => b.tokensTotal - a.tokensTotal || b.requests - a.requests);
+  el.tokenTable.innerHTML = rows
     .map(
       (row) =>
         `<tr><td>${row.model}</td><td>${formatNum(row.requests)}</td><td>${formatNum(row.tokensDaily)}</td><td>${formatNum(row.tokensTotal)}</td></tr>`
@@ -487,13 +531,7 @@ async function loadExternalStatus() {
 }
 
 async function loadModels() {
-  if (!state.unlocked) return;
-  const data = await fetchJson(apiUrl("/chat/models"));
-  const models = data.models || [];
-  state.models = models;
-  el.modelSelect.innerHTML = models
-    .map((model) => `<option value="${model.key}">${model.label}</option>`)
-    .join("");
+  return;
 }
 
 async function loadWorkplace() {
@@ -544,7 +582,7 @@ async function bootstrapDashboard() {
     }, 60_000);
   }
 
-  await Promise.all([loadModels(), loadSummary(), loadAgentsStatus(), loadExternalStatus(), loadWorkplace()]);
+  await Promise.all([loadSummary(), loadAgentsStatus(), loadExternalStatus(), loadWorkplace()]);
   setStatus(t("ready"));
 }
 
@@ -584,30 +622,24 @@ function maybeAutoUnlock() {
 }
 
 async function handleSendChat() {
-  const model = el.modelSelect.value;
   const message = el.chatboxInput.value.trim();
-  if (!model) {
-    setStatus(t("modelRequired"), true);
-    return;
-  }
   if (!message) {
     setStatus(t("msgRequired"), true);
     return;
   }
 
-  appendBubble("user", message, model);
-
-  const form = new FormData();
-  form.append("model", model);
-  form.append("message", message);
+  appendBubble("user", message, "Karina");
 
   setStatus(t("sending"));
   el.sendChatBtn.disabled = true;
   try {
-    const resp = await fetch(apiUrl("/chat/intelligent"), {
+    const resp = await fetch(apiUrl("/chat/karina"), {
       method: "POST",
-      headers: { "x-dashboard-token": state.authToken },
-      body: form
+      headers: {
+        "x-dashboard-token": state.authToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ message })
     });
     const data = await resp.json();
     if (resp.status === 401) {
@@ -617,12 +649,10 @@ async function handleSendChat() {
     if (!resp.ok || !data.ok) {
       throw new Error(data.error || `HTTP ${resp.status}`);
     }
-    const usage = data.usage || {};
-    const meta = `${model} · in ${formatNum(usage.input)} · out ${formatNum(usage.output)} · total ${formatNum(usage.total)}`;
-    appendBubble("assistant", data.reply || "-", meta);
+    appendBubble("assistant", data.reply || "已发送给 Karina。", "Karina");
     setStatus(t("ready"));
     el.chatboxInput.value = "";
-    await loadSummary();
+    await Promise.all([loadSummary(), loadWorkplace()]);
   } catch (error) {
     appendBubble("system", String(error.message || error));
     setStatus(String(error.message || error), true);
