@@ -296,7 +296,7 @@ body::before {
   padding: 7px;
   overflow-x: hidden;
   overflow-y: auto;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   border: 1px solid rgba(var(--border-rgb), var(--border-alpha));
   background: rgba(var(--glass-rgb), var(--glass-alpha));
   backdrop-filter: blur(var(--glass-blur));
