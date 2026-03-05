@@ -45,27 +45,50 @@
 
       <main class="workspace">
         <section class="left-grid">
+          <section class="panel token-panel">
+            <div class="panel-head compact">
+              <h2 id="tokenTitle"></h2>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="thModel"></th>
+                    <th id="thTokenDaily"></th>
+                    <th id="thTokenTotal"></th>
+                  </tr>
+                </thead>
+                <tbody id="tokenTable"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel agent-panel">
+            <div class="panel-head compact">
+              <h2 id="agentTitle"></h2>
+              <span id="agentHint" class="panel-hint"></span>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th id="thAgentName"></th>
+                    <th id="thAgentCharacter"></th>
+                    <th id="thAgentModel"></th>
+                    <th id="thAgentStatus"></th>
+                  </tr>
+                </thead>
+                <tbody id="agentTable"></tbody>
+              </table>
+            </div>
+          </section>
+
           <section class="panel chatbox-panel">
             <div class="panel-head">
               <h2 id="chatboxTitle"></h2>
               <span id="chatAgentBadge" class="chat-agent-badge"></span>
             </div>
             <div class="chatbox-shell">
-              <div class="chat-side-column">
-                <section class="side-card">
-                  <h3 id="hooksTitle"></h3>
-                  <div id="hooksList" class="side-list"></div>
-                </section>
-                <section class="side-card">
-                  <h3 id="skillsTitle"></h3>
-                  <div id="skillsList" class="side-list"></div>
-                </section>
-                <section class="side-card">
-                  <h3 id="rulesTitle"></h3>
-                  <div id="rulesList" class="side-list"></div>
-                </section>
-              </div>
-
               <div class="chat-main-column">
                 <div id="chatboxMessages" class="chatbox-messages"></div>
 
@@ -81,44 +104,37 @@
           <section class="panel memory-panel">
             <div class="panel-head compact">
               <h2 id="memoryTitle"></h2>
-              <span id="memoryHint" class="panel-hint"></span>
             </div>
             <div id="memoryTierRows" class="memory-rows"></div>
             <div id="memoryVectorInfo" class="panel-note"></div>
           </section>
 
-          <section class="panel token-panel">
+          <section class="panel hooks-panel">
             <div class="panel-head compact">
-              <h2 id="tokenTitle"></h2>
+              <h2 id="hooksTitle"></h2>
             </div>
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th id="thModel"></th>
-                    <th id="thRequests"></th>
-                    <th id="thTokenDaily"></th>
-                    <th id="thTokenTotal"></th>
-                  </tr>
-                </thead>
-                <tbody id="tokenTable"></tbody>
-              </table>
-            </div>
+            <div id="hooksList" class="side-list"></div>
           </section>
 
-          <section class="panel agent-panel">
+          <section class="panel skills-panel">
             <div class="panel-head compact">
-              <h2 id="agentTitle"></h2>
-              <span id="agentHint" class="panel-hint"></span>
+              <h2 id="skillsTitle"></h2>
             </div>
-            <div id="agentStatusList" class="agent-list"></div>
+            <div id="skillsList" class="side-list"></div>
+          </section>
+
+          <section class="panel rules-panel">
+            <div class="panel-head compact">
+              <h2 id="rulesTitle"></h2>
+            </div>
+            <div id="rulesList" class="side-list"></div>
           </section>
 
           <section class="panel task-panel">
             <div class="panel-head compact">
               <h2 id="taskTitle"></h2>
             </div>
-            <div class="table-scroll">
+            <div class="table-scroll compact-table">
               <table>
                 <thead>
                   <tr>
@@ -129,6 +145,22 @@
                 <tbody id="taskTable"></tbody>
               </table>
             </div>
+          </section>
+
+          <section class="panel project-panel">
+            <div class="panel-head compact">
+              <h2 id="projectTitle"></h2>
+            </div>
+            <div id="projectSummary" class="panel-note"></div>
+            <div id="projectList" class="project-list"></div>
+          </section>
+
+          <section class="panel workplace-panel">
+            <div class="panel-head compact">
+              <h2 id="workplaceTitle"></h2>
+              <span id="workplaceMeta" class="panel-hint"></span>
+            </div>
+            <div id="workplaceFeed" class="workplace-feed"></div>
           </section>
 
           <section class="panel mcp-panel">
@@ -142,51 +174,18 @@
                   <tr>
                     <th id="thMcpApp"></th>
                     <th id="thMcpAgent"></th>
-                    <th id="thMcpStatus"></th>
+                    <th id="thMcpMethod"></th>
                   </tr>
                 </thead>
                 <tbody id="mcpTable"></tbody>
               </table>
             </div>
           </section>
-
-          <section class="panel project-panel">
-            <div class="panel-head compact">
-              <h2 id="projectTitle"></h2>
-            </div>
-            <div id="projectSummary" class="panel-note"></div>
-            <div id="projectList" class="project-list"></div>
-          </section>
-
-          <section class="panel alert-panel">
-            <div class="panel-head compact">
-              <h2 id="alertTitle"></h2>
-            </div>
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th id="thAlertTime"></th>
-                    <th id="thAlertType"></th>
-                    <th id="thAlertDetail"></th>
-                  </tr>
-                </thead>
-                <tbody id="alertTable"></tbody>
-              </table>
-            </div>
-          </section>
-        </section>
-
-        <section class="panel workplace-panel">
-          <div class="panel-head compact">
-            <h2 id="workplaceTitle"></h2>
-            <span id="workplaceMeta" class="panel-hint"></span>
-          </div>
-          <div id="workplaceFeed" class="workplace-feed"></div>
         </section>
       </main>
 
       <footer class="foot">
+        <span id="errorCode">-</span>
         <span id="updatedAt">-</span>
       </footer>
     </div>

@@ -6,7 +6,6 @@ const UI = {
   skillsTitle: "Skills",
   rulesTitle: "Rules",
   memoryTitle: "Memory",
-  memoryHint: "refresh every 1 minute",
   agentTitle: "Agent",
   agentHint: "refresh every 1 minute",
   mcpTitle: "MCP",
@@ -14,32 +13,29 @@ const UI = {
   tokenTitle: "Token",
   taskTitle: "Cron",
   projectTitle: "Project",
-  alertTitle: "Alert",
   workplaceTitle: "Workplace",
   thModel: "Model",
-  thRequests: "Requests",
   thTokenDaily: "Daily Tokens",
   thTokenTotal: "Total Tokens",
-  thTaskContent: "Content",
+  thAgentName: "Name",
+  thAgentCharacter: "Character",
+  thAgentModel: "Model",
+  thAgentStatus: "Status",
+  thTaskContent: "Task",
   thTaskCadence: "Cadence",
-  thAlertTime: "Time",
-  thAlertType: "Type",
-  thAlertDetail: "Detail",
   thMcpApp: "App",
   thMcpAgent: "Agent",
-  thMcpStatus: "Status",
+  thMcpMethod: "Method",
   updatedAt: "Updated",
   modelRequired: "Please select model",
   msgRequired: "Please enter message",
   sending: "Sending…",
   ready: "Ready",
   noData: "No data",
-  noWorkplace: "No collaboration records",
-  noAlerts: "No active alert"
+  noWorkplace: "No collaboration records"
 };
 
-const PREFIX_MODE = /^\/intelligent\/ensemble(?:\/|$)/.test(window.location.pathname);
-const API_BASE = PREFIX_MODE ? "/intelligent/ensemble/api" : "/api";
+const API_BASE = "/api";
 
 function apiUrl(path) {
   const clean = String(path || "").startsWith("/") ? String(path) : `/${String(path || "")}`;
@@ -82,22 +78,25 @@ const el = {
   chatboxInput: document.getElementById("chatboxInput"),
   sendChatBtn: document.getElementById("sendChatBtn"),
   chatboxStatus: document.getElementById("chatboxStatus"),
+  errorCode: document.getElementById("errorCode"),
   memoryTitle: document.getElementById("memoryTitle"),
-  memoryHint: document.getElementById("memoryHint"),
   memoryTierRows: document.getElementById("memoryTierRows"),
   memoryVectorInfo: document.getElementById("memoryVectorInfo"),
   agentTitle: document.getElementById("agentTitle"),
   agentHint: document.getElementById("agentHint"),
-  agentStatusList: document.getElementById("agentStatusList"),
+  thAgentName: document.getElementById("thAgentName"),
+  thAgentCharacter: document.getElementById("thAgentCharacter"),
+  thAgentModel: document.getElementById("thAgentModel"),
+  thAgentStatus: document.getElementById("thAgentStatus"),
+  agentTable: document.getElementById("agentTable"),
   mcpTitle: document.getElementById("mcpTitle"),
   mcpHint: document.getElementById("mcpHint"),
   thMcpApp: document.getElementById("thMcpApp"),
   thMcpAgent: document.getElementById("thMcpAgent"),
-  thMcpStatus: document.getElementById("thMcpStatus"),
+  thMcpMethod: document.getElementById("thMcpMethod"),
   mcpTable: document.getElementById("mcpTable"),
   tokenTitle: document.getElementById("tokenTitle"),
   thModel: document.getElementById("thModel"),
-  thRequests: document.getElementById("thRequests"),
   thTokenDaily: document.getElementById("thTokenDaily"),
   thTokenTotal: document.getElementById("thTokenTotal"),
   tokenTable: document.getElementById("tokenTable"),
@@ -108,11 +107,6 @@ const el = {
   projectTitle: document.getElementById("projectTitle"),
   projectSummary: document.getElementById("projectSummary"),
   projectList: document.getElementById("projectList"),
-  alertTitle: document.getElementById("alertTitle"),
-  thAlertTime: document.getElementById("thAlertTime"),
-  thAlertType: document.getElementById("thAlertType"),
-  thAlertDetail: document.getElementById("thAlertDetail"),
-  alertTable: document.getElementById("alertTable"),
   workplaceTitle: document.getElementById("workplaceTitle"),
   workplaceMeta: document.getElementById("workplaceMeta"),
   workplaceFeed: document.getElementById("workplaceFeed")
@@ -158,9 +152,29 @@ function statusSymbol(ok) {
   return ok ? "✓" : "✕";
 }
 
+function extractErrorCode(text) {
+  const raw = String(text || "");
+  const directCode = raw.match(/\b[A-Z][A-Z0-9_]{2,}\b/);
+  if (directCode) return directCode[0];
+  const httpCode = raw.match(/\bHTTP\s*(\d{3})\b/i);
+  if (httpCode) return `HTTP_${httpCode[1]}`;
+  return raw ? "ERR_RUNTIME" : "-";
+}
+
+function setErrorCode(text = "") {
+  if (!el.errorCode) return;
+  const code = extractErrorCode(text);
+  el.errorCode.textContent = code === "-" ? "-" : `Error: ${code}`;
+}
+
 function setStatus(text, isError = false) {
   el.chatboxStatus.textContent = text;
   el.chatboxStatus.style.color = isError ? "#b11111" : "#666";
+  if (isError) {
+    setErrorCode(text);
+  } else if (!String(text || "").trim()) {
+    setErrorCode("-");
+  }
 }
 
 function setUnlockError(text) {
@@ -269,11 +283,19 @@ function applyLabels() {
   el.hooksTitle.textContent = t("hooksTitle");
   el.skillsTitle.textContent = t("skillsTitle");
   el.rulesTitle.textContent = t("rulesTitle");
-  el.hooksList.innerHTML = "<div>Post-run audit</div><div>Token sync ingest</div><div>Discord relay</div>";
-  el.skillsList.innerHTML = "<div>Planner</div><div>Reviewer loop</div><div>Deployment</div>";
-  el.rulesList.innerHTML = "<div>收到后执行</div><div>完成再交接</div><div>短句交接</div>";
+  el.hooksList.innerHTML =
+    '<div class="meta-item"><span class="meta-name">Post-run audit</span><span class="meta-detail">Verify delivery quality</span></div>' +
+    '<div class="meta-item"><span class="meta-name">Token sync ingest</span><span class="meta-detail">Merge local/cloud usage</span></div>' +
+    '<div class="meta-item"><span class="meta-name">Discord relay</span><span class="meta-detail">Mirror when enabled</span></div>';
+  el.skillsList.innerHTML =
+    '<div class="meta-item"><span class="meta-name">Planner</span><span class="meta-detail">Task split and sequencing</span></div>' +
+    '<div class="meta-item"><span class="meta-name">Reviewer loop</span><span class="meta-detail">Quality and rollback check</span></div>' +
+    '<div class="meta-item"><span class="meta-name">Deployment</span><span class="meta-detail">Git + Cloudflare release</span></div>';
+  el.rulesList.innerHTML =
+    '<div class="meta-item"><span class="meta-name">收到后执行</span><span class="meta-detail">默认立即开始处理</span></div>' +
+    '<div class="meta-item"><span class="meta-name">完成再交接</span><span class="meta-detail">节点完成才交给下个角色</span></div>' +
+    '<div class="meta-item"><span class="meta-name">短句交接</span><span class="meta-detail">交接语句随机短句池</span></div>';
   el.memoryTitle.textContent = t("memoryTitle");
-  el.memoryHint.textContent = t("memoryHint");
   el.agentTitle.textContent = t("agentTitle");
   el.agentHint.textContent = t("agentHint");
   el.mcpTitle.textContent = t("mcpTitle");
@@ -281,20 +303,19 @@ function applyLabels() {
   el.tokenTitle.textContent = t("tokenTitle");
   el.taskTitle.textContent = t("taskTitle");
   el.projectTitle.textContent = t("projectTitle");
-  el.alertTitle.textContent = t("alertTitle");
   el.workplaceTitle.textContent = t("workplaceTitle");
   el.thModel.textContent = t("thModel");
-  el.thRequests.textContent = t("thRequests");
   el.thTokenDaily.textContent = t("thTokenDaily");
   el.thTokenTotal.textContent = t("thTokenTotal");
+  el.thAgentName.textContent = t("thAgentName");
+  el.thAgentCharacter.textContent = t("thAgentCharacter");
+  el.thAgentModel.textContent = t("thAgentModel");
+  el.thAgentStatus.textContent = t("thAgentStatus");
   el.thTaskContent.textContent = t("thTaskContent");
   el.thTaskCadence.textContent = t("thTaskCadence");
-  el.thAlertTime.textContent = t("thAlertTime");
-  el.thAlertType.textContent = t("thAlertType");
-  el.thAlertDetail.textContent = t("thAlertDetail");
   el.thMcpApp.textContent = t("thMcpApp");
   el.thMcpAgent.textContent = t("thMcpAgent");
-  el.thMcpStatus.textContent = t("thMcpStatus");
+  el.thMcpMethod.textContent = t("thMcpMethod");
 }
 
 async function fetchPublicJson(url, options = {}) {
@@ -341,12 +362,12 @@ function renderMemory(memory) {
 
   const vector = memory?.vector || {};
   const rate = Number(vector.qualityRate || 0).toFixed(2);
-  el.memoryVectorInfo.textContent = `Vector quality ${rate}% ｜ sample ${formatNum(vector.sampleSize)} / pool ${formatNum(vector.poolSize)} ｜ next ${formatTime(vector.nextRunAt)}`;
+  el.memoryVectorInfo.textContent = `Vector Quality: ${rate}%`;
 }
 
 function renderTokens(tokens) {
   if (!tokens || tokens.length === 0) {
-    el.tokenTable.innerHTML = `<tr><td colspan="4">${t("noData")}</td></tr>`;
+    el.tokenTable.innerHTML = `<tr><td colspan="3">${t("noData")}</td></tr>`;
     return;
   }
   const merged = new Map();
@@ -364,7 +385,7 @@ function renderTokens(tokens) {
   el.tokenTable.innerHTML = rows
     .map(
       (row) =>
-        `<tr><td>${row.model}</td><td>${formatNum(row.requests)}</td><td>${formatNum(row.tokensDaily)}</td><td>${formatNum(row.tokensTotal)}</td></tr>`
+        `<tr><td>${row.model}</td><td>${formatNum(row.tokensDaily)}</td><td>${formatNum(row.tokensTotal)}</td></tr>`
     )
     .join("");
 }
@@ -375,12 +396,13 @@ function renderTasks(tasks) {
     return;
   }
   el.taskTable.innerHTML = tasks
+    .slice(0, 5)
     .map((row) => `<tr><td>${row.content || "-"}</td><td>${row.cadence || "-"}</td></tr>`)
     .join("");
 }
 
 function renderProjects(projects) {
-  const rows = projects?.rows || [];
+  const rows = (projects?.rows || []).slice(0, 5);
   const completed = Number(projects?.completed || 0);
   const total = Number(projects?.total || rows.length);
   el.projectSummary.textContent = `Completed ${completed} / Total ${total}`;
@@ -400,37 +422,47 @@ function renderProjects(projects) {
     .join("");
 }
 
-function renderAlerts(alerts) {
-  if (!alerts || alerts.length === 0) {
-    el.alertTable.innerHTML = `<tr><td colspan="3">${t("noAlerts")}</td></tr>`;
+function renderAlertCode(alerts) {
+  if (!Array.isArray(alerts) || !alerts.length) {
+    setErrorCode("-");
     return;
   }
-  el.alertTable.innerHTML = alerts
-    .map(
-      (row) =>
-        `<tr class="severity-${(row.severity || "low").toLowerCase()}"><td>${formatTime(row.time)}</td><td>${row.type || "-"}</td><td>${row.detail || "-"}</td></tr>`
-    )
-    .join("");
+  const first = alerts[0] || {};
+  if (String(first.type || "").toUpperCase() === "OK") {
+    setErrorCode("-");
+    return;
+  }
+  const detail = [first.type, first.detail].filter(Boolean).join(" ");
+  setErrorCode(detail || "ERR_RUNTIME");
 }
 
 function renderAgentStatus(payload) {
   state.agentsStatus = payload;
   const rows = Array.isArray(payload?.rows) ? payload.rows : [];
   if (rows.length === 0) {
-    el.agentStatusList.innerHTML = `<div class="agent-item">${t("noData")}</div>`;
+    el.agentTable.innerHTML = `<tr><td colspan="4">${t("noData")}</td></tr>`;
     return;
   }
-  el.agentStatusList.innerHTML = rows
+  const defaultModelByName = {
+    Karina: "Qwen3.5-plus",
+    Goeun: "Qwen3-max-2026-01-23",
+    Suzy: "Qwen3-coder-plus",
+    Jisoo: "Qwen3-coder-next"
+  };
+  el.agentTable.innerHTML = rows
     .map((row) => {
+      const label = String(row.label || row.id || "-");
+      const parts = label.split(" - ");
+      const name = parts[0] || label;
+      const character = parts.slice(1).join(" - ") || "Specialist";
+      const model = row.model || defaultModelByName[name] || "Qwen3.5-plus";
       const ok = row.enabled !== false && !!row.ok;
-      const detail = row.username || row.detail || "-";
-      return `<div class="agent-item">
-        <div class="agent-row">
-          <span>${row.label || row.id || "-"}</span>
-          <b class="status-symbol">${statusSymbol(ok)}</b>
-        </div>
-        <div class="agent-meta">${detail} · ${formatTime(row.checkedAt)}</div>
-      </div>`;
+      return `<tr>
+        <td>${name}</td>
+        <td>${character}</td>
+        <td>${model}</td>
+        <td><span class="status-symbol">${statusSymbol(ok)}</span></td>
+      </tr>`;
     })
     .join("");
 }
@@ -442,11 +474,13 @@ function renderExternalStatus(payload) {
     el.mcpTable.innerHTML = `<tr><td colspan="3">${t("noData")}</td></tr>`;
     return;
   }
+  const inferMethod = (row) => {
+    const text = `${row?.app || ""} ${row?.detail || ""}`.toLowerCase();
+    if (text.includes("oauth")) return "OAuth";
+    return "API";
+  };
   el.mcpTable.innerHTML = rows
-    .map(
-      (row) =>
-        `<tr><td>${row.app || "-"}</td><td>${row.agent || "-"}</td><td><span class="status-symbol">${statusSymbol(!!row.ok)}</span></td></tr>`
-    )
+    .map((row) => `<tr><td>${row.app || "-"}</td><td>${row.agent || "-"}</td><td>${inferMethod(row)}</td></tr>`)
     .join("");
 }
 
@@ -457,7 +491,7 @@ function renderSummary(data) {
   renderTokens(data.tokens || []);
   renderTasks(data.tasks || []);
   renderProjects(data.projects || {});
-  renderAlerts(data.alerts || []);
+  renderAlertCode(data.alerts || []);
 }
 
 function renderWorkplace(data) {
@@ -754,6 +788,7 @@ function init() {
   bindEvents();
   lockDashboard();
   setStatus("");
+  setErrorCode("-");
 }
 
 init();

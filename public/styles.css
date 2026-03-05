@@ -176,7 +176,7 @@ body::before {
   top: 10px;
   z-index: 30;
   width: min(1760px, 96vw);
-  height: 64px;
+  min-height: 76px;
   margin: 12px auto 8px;
   padding: 10px 12px;
   border-radius: var(--radius-pill);
@@ -201,7 +201,7 @@ body::before {
   align-items: flex-end;
   gap: 6px;
   font-family: var(--font-display);
-  font-size: clamp(14px, 1.4vw, 18px);
+  font-size: clamp(26px, 2.5vw, 34px);
   letter-spacing: 0.06em;
   font-weight: 400;
   text-transform: uppercase;
@@ -234,7 +234,7 @@ body::before {
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 12px;
-  font-family: var(--font-alt);
+  font-family: var(--font-display);
   letter-spacing: 0.02em;
   transition:
     color var(--motion-fast) var(--ease-fluid),
@@ -257,23 +257,23 @@ body::before {
   min-height: 650px;
   margin: 0 auto;
   padding: 6px 0 10px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.29fr);
-  gap: 12px;
+  display: block;
 }
 
 .left-grid {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1.16fr 1.16fr 1.16fr 0.92fr;
-  grid-template-rows: 1fr 1fr 1fr 0.9fr;
+  grid-template-columns: minmax(260px, 0.95fr) minmax(440px, 1.4fr) minmax(220px, 0.8fr) minmax(210px, 0.72fr);
+  grid-template-rows: 0.9fr 0.9fr 0.9fr 0.9fr 0.82fr;
   grid-template-areas:
-    "chat chat chat token"
-    "chat chat chat memory"
-    "chat chat chat agent"
-    "mcp task project alert";
+    "token chat memory workplace"
+    "token chat hooks workplace"
+    "agent chat skills workplace"
+    "agent chat rules workplace"
+    "agent task project mcp";
   gap: 12px;
+  height: 100%;
 }
 
 .panel {
@@ -346,6 +346,18 @@ body::before {
   grid-area: memory;
 }
 
+.hooks-panel {
+  grid-area: hooks;
+}
+
+.skills-panel {
+  grid-area: skills;
+}
+
+.rules-panel {
+  grid-area: rules;
+}
+
 .agent-panel {
   grid-area: agent;
 }
@@ -362,11 +374,8 @@ body::before {
   grid-area: project;
 }
 
-.alert-panel {
-  grid-area: alert;
-}
-
 .workplace-panel {
+  grid-area: workplace;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -386,36 +395,7 @@ body::before {
 .chatbox-shell {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 10px;
-}
-
-.chat-side-column {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.side-card {
-  min-height: 0;
-  overflow: auto;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(var(--border-rgb), 0.14);
-  background: rgba(255, 255, 255, 0.58);
-  padding: 10px;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.86);
-}
-
-.side-card h3 {
-  margin: 0 0 7px;
-  font-family: var(--font-alt);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-soft);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  display: block;
 }
 
 .side-list {
@@ -424,6 +404,30 @@ body::before {
   line-height: 1.45;
   display: grid;
   gap: 6px;
+  margin-top: 2px;
+}
+
+.side-list .meta-item {
+  border-bottom: 1px dashed rgba(var(--border-rgb), 0.14);
+  padding: 5px 0;
+}
+
+.side-list .meta-item:last-child {
+  border-bottom: none;
+}
+
+.side-list .meta-name {
+  display: block;
+  font-family: var(--font-alt);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.side-list .meta-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .chat-main-column {
@@ -590,9 +594,25 @@ table {
   border-radius: var(--radius-md);
   border: 1px solid rgba(var(--border-rgb), 0.14);
   background: rgba(255, 255, 255, 0.58);
-  height: calc(100% - 36px);
+  height: calc(100% - 34px);
   min-height: 0;
   overflow: auto;
+}
+
+.token-panel table,
+.agent-panel table,
+.mcp-panel table,
+.task-panel table {
+  table-layout: fixed;
+}
+
+.agent-panel th,
+.agent-panel td {
+  font-size: 11px;
+}
+
+.compact-table thead {
+  display: none;
 }
 
 th,
@@ -620,32 +640,34 @@ th {
 .project-list {
   margin-top: 8px;
   overflow: auto;
-  max-height: calc(100% - 50px);
+  max-height: calc(100% - 42px);
 }
 
 .project-item {
   margin-bottom: 8px;
   border-radius: var(--radius-md);
   border: 1px solid rgba(var(--border-rgb), 0.14);
-  padding: 10px;
+  padding: 8px;
   background: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
 }
 
 .project-item b {
   font-family: var(--font-alt);
+  font-size: 12px;
   font-weight: 600;
 }
 
 .project-item .meta {
   margin-top: 5px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .progress {
-  margin-top: 8px;
+  margin-top: 6px;
   width: 100%;
-  height: 6px;
+  height: 4px;
   border-radius: var(--radius-pill);
   background: rgba(17, 17, 17, 0.1);
   overflow: hidden;
@@ -663,38 +685,6 @@ th {
 
 .severity-medium td {
   color: #7a5312;
-}
-
-.agent-list {
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(var(--border-rgb), 0.14);
-  background: rgba(255, 255, 255, 0.58);
-  height: calc(100% - 34px);
-  overflow: auto;
-  padding: 7px 8px;
-}
-
-.agent-item {
-  border-bottom: 1px dashed rgba(var(--border-rgb), 0.14);
-  padding: 6px 0;
-}
-
-.agent-item:last-child {
-  border-bottom: none;
-}
-
-.agent-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 12px;
-}
-
-.agent-meta {
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--text-secondary);
 }
 
 .status-symbol {
@@ -715,6 +705,7 @@ th {
   border-bottom: 1px dashed rgba(var(--border-rgb), 0.14);
   padding: 8px 0;
   line-height: 1.5;
+  font-size: 12px;
   white-space: pre-wrap;
 }
 
@@ -746,10 +737,21 @@ th {
   background: rgba(255, 255, 255, 0.56);
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 10px;
   padding: 0 12px;
   color: var(--text-secondary);
   font-size: 11px;
+}
+
+#errorCode {
+  color: #8f1d1d;
+  font-family: var(--font-alt);
+  letter-spacing: 0.03em;
+  max-width: 72%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .hidden {
@@ -759,10 +761,9 @@ th {
 .panel::-webkit-scrollbar,
 .table-scroll::-webkit-scrollbar,
 .chatbox-messages::-webkit-scrollbar,
-.agent-list::-webkit-scrollbar,
 .project-list::-webkit-scrollbar,
 .workplace-feed::-webkit-scrollbar,
-.side-card::-webkit-scrollbar {
+.side-list::-webkit-scrollbar {
   width: 9px;
   height: 9px;
 }
@@ -770,10 +771,9 @@ th {
 .panel::-webkit-scrollbar-thumb,
 .table-scroll::-webkit-scrollbar-thumb,
 .chatbox-messages::-webkit-scrollbar-thumb,
-.agent-list::-webkit-scrollbar-thumb,
 .project-list::-webkit-scrollbar-thumb,
 .workplace-feed::-webkit-scrollbar-thumb,
-.side-card::-webkit-scrollbar-thumb {
+.side-list::-webkit-scrollbar-thumb {
   border-radius: var(--radius-pill);
   background: rgba(17, 17, 17, 0.2);
   border: 1px solid rgba(17, 17, 17, 0.18);
@@ -782,20 +782,15 @@ th {
 .panel::-webkit-scrollbar-track,
 .table-scroll::-webkit-scrollbar-track,
 .chatbox-messages::-webkit-scrollbar-track,
-.agent-list::-webkit-scrollbar-track,
 .project-list::-webkit-scrollbar-track,
 .workplace-feed::-webkit-scrollbar-track,
-.side-card::-webkit-scrollbar-track {
+.side-list::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.6);
 }
 
 @media (max-width: 1580px) {
-  .workspace {
-    gap: 10px;
-  }
-
   .left-grid {
-    grid-template-columns: 1.08fr 1.08fr 1.08fr 0.88fr;
+    grid-template-columns: minmax(240px, 0.9fr) minmax(400px, 1.25fr) minmax(210px, 0.78fr) minmax(200px, 0.68fr);
     gap: 10px;
   }
 }
@@ -805,24 +800,26 @@ th {
     width: min(96vw, 1200px);
     height: auto;
     min-height: 0;
-    grid-template-columns: 1fr;
     padding-bottom: 12px;
   }
 
   .left-grid {
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: minmax(260px, 2.1fr) minmax(260px, 2.1fr) minmax(200px, 1fr) minmax(200px, 1fr) minmax(180px, 1fr) minmax(180px, 1fr);
+    grid-template-rows: repeat(8, minmax(180px, auto));
     grid-template-areas:
-      "chat chat"
-      "chat chat"
-      "token memory"
-      "agent alert"
-      "mcp task"
-      "project project";
+      "token chat"
+      "token chat"
+      "agent chat"
+      "agent memory"
+      "hooks skills"
+      "rules workplace"
+      "task project"
+      "mcp mcp";
+    height: auto;
   }
 
   .workplace-panel {
-    min-height: 360px;
+    min-height: 240px;
   }
 }
 
@@ -844,15 +841,6 @@ th {
     justify-content: flex-start;
   }
 
-  .chatbox-shell {
-    grid-template-columns: 1fr;
-  }
-
-  .chat-side-column {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: none;
-  }
-
   .foot {
     width: min(96vw, 1200px);
   }
@@ -867,17 +855,16 @@ th {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
     grid-template-areas:
-      "chat"
       "token"
-      "memory"
       "agent"
-      "mcp"
+      "chat"
+      "memory"
+      "hooks"
+      "skills"
+      "rules"
       "task"
+      "mcp"
       "project"
-      "alert";
-  }
-
-  .chat-side-column {
-    grid-template-columns: 1fr;
+      "workplace";
   }
 }
