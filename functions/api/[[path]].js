@@ -649,26 +649,54 @@ async function callKarinaExecutor(state, env, message, board = "project") {
       const providers = providerConfig(env);
       const raw = String(env.KARINA_EXEC_MODEL || "codex::gpt-5.3-codex").trim();
       const parsed = parseModelKey(raw) || { provider: "codex", modelId: "gpt-5.3-codex" };
-      const providerName = parsed.provider === "bailian" ? "bailian" : "codex";
-      const provider = providerName === "bailian" ? providers.bailian : providers.codex;
-      const fallbackModel = providerName === "bailian" ? FALLBACK_BAILIAN_MODELS[0] : FALLBACK_CODEX_MODELS[0];
-      const modelId = String(parsed.modelId || fallbackModel || "").trim();
-      if (!modelId) {
-        state.karinaExecStatus = { ok: false, detail: "embedded missing model id" };
-        throw new Error("karina embedded executor model missing");
+      const wrappedMessage = `Board: ${board}\n${message}`;
+      const preferredProvider = parsed.provider === "bailian" ? "bailian" : "codex";
+      const preferredModel = String(
+        parsed.modelId || (preferredProvider === "bailian" ? FALLBACK_BAILIAN_MODELS[0] : FALLBACK_CODEX_MODELS[0]) || ""
+      ).trim();
+
+      const candidateQueue = [];
+      if (preferredModel) {
+        candidateQueue.push({
+          name: preferredProvider,
+          modelId: preferredModel
+        });
       }
 
-      const wrappedMessage = `Board: ${board}\n${message}`;
-      const result = await callProviderChat(provider, modelId, wrappedMessage);
-      state.karinaExecStatus = { ok: true, detail: `embedded ${provider.label}/${modelId}` };
-      return {
-        reply: String(result.reply || "").trim() || "Karina executed.",
-        config: { ...cfg, embedded: true }
-      };
+      if (preferredProvider === "codex") {
+        candidateQueue.push({
+          name: "bailian",
+          modelId: String(FALLBACK_BAILIAN_MODELS[0] || "").trim()
+        });
+      } else {
+        candidateQueue.push({
+          name: "codex",
+          modelId: String(FALLBACK_CODEX_MODELS[0] || "").trim()
+        });
+      }
+
+      const attempted = [];
+      for (const candidate of candidateQueue) {
+        const provider = candidate.name === "bailian" ? providers.bailian : providers.codex;
+        const modelId = String(candidate.modelId || "").trim();
+        if (!provider || !modelId) continue;
+        try {
+          const result = await callProviderChat(provider, modelId, wrappedMessage);
+          state.karinaExecStatus = { ok: true, detail: `embedded ${provider.label}/${modelId}` };
+          return {
+            reply: String(result.reply || "").trim() || "Karina executed.",
+            config: { ...cfg, embedded: true }
+          };
+        } catch (error) {
+          attempted.push(`${provider.label}/${modelId}: ${String(error?.message || error)}`);
+        }
+      }
+
+      const failDetail = attempted.length ? attempted.join(" | ") : "embedded executor no candidate";
+      state.karinaExecStatus = { ok: false, detail: `embedded failed: ${failDetail}` };
+      throw new Error(`karina embedded executor failed: ${failDetail}`);
     } catch (error) {
-      const detail = String(error?.message || error);
-      state.karinaExecStatus = { ok: false, detail: `embedded failed: ${detail}` };
-      throw new Error(`karina embedded executor failed: ${detail}`);
+      throw error;
     }
   }
 
