@@ -142,11 +142,10 @@ function validateProviderBase(config) {
 
 function buildModelPathCandidates(config) {
   const current = String(config?.modelPath || "/models").trim() || "/models";
-  const set = new Set([current]);
   if (config?.name === "codex") {
-    set.add("/v1/models");
-    set.add("/models");
+    return [current];
   }
+  const set = new Set([current]);
   if (config?.name === "claude") {
     set.add("/models");
     set.add("/v1/models");
@@ -156,11 +155,10 @@ function buildModelPathCandidates(config) {
 
 function buildChatPathCandidates(config) {
   const current = String(config?.chatPath || "/chat/completions").trim() || "/chat/completions";
-  const set = new Set([current]);
   if (config?.name === "codex") {
-    set.add(DEFAULT_CODEX_CHAT_PATH);
-    set.add("/responses");
+    return [current];
   }
+  const set = new Set([current]);
   if (config?.name === "claude") {
     set.add("/chat/completions");
     set.add("/v1/chat/completions");
