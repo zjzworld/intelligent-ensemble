@@ -36,6 +36,7 @@ const DEFAULT_CODEX_BASE_URL = "https://gmn.chuangzuoli.com";
 const DEFAULT_CODEX_MODEL_PATH = "/v1/models";
 const DEFAULT_CODEX_CHAT_PATH = "/v1/responses";
 const DEFAULT_CLAUDE_BASE_URL = "https://cursor.scihub.edu.kg/api";
+const DEFAULT_PLAYGROUND_CLAUDE_MODEL = "claude-opus-4-5-20251101";
 
 const PLAYGROUND_DEFAULT_MODELS = ["GPT-5.3-Codex", "Claude-Opus-4.6"];
 const PLAYGROUND_MODEL_CATALOG = [
@@ -684,7 +685,7 @@ function playgroundProviderConfig(env) {
     apiKey: String(env.CLAUDE_API_KEY || "").trim(),
     modelPath: String(env.CLAUDE_MODEL_PATH || "/models").trim(),
     chatPath: String(env.CLAUDE_CHAT_PATH || "/chat/completions").trim(),
-    fallbackModels: ["Claude-Opus-4.6"]
+    fallbackModels: [DEFAULT_PLAYGROUND_CLAUDE_MODEL]
   };
   return {
     bailian: baseProviders.bailian,
@@ -699,7 +700,7 @@ function resolvePlaygroundModelId(env, row) {
     return String(env.PLAYGROUND_CODEX_MODEL || "gpt-5.3-codex").trim();
   }
   if (name === "Claude-Opus-4.6") {
-    return String(env.PLAYGROUND_CLAUDE_MODEL || "Claude-Opus-4.6").trim();
+    return String(env.PLAYGROUND_CLAUDE_MODEL || DEFAULT_PLAYGROUND_CLAUDE_MODEL).trim();
   }
   if (name === "Qwen-coder-plus") {
     return String(env.PLAYGROUND_QWEN_MODEL || "qwen3-coder-plus").trim();
