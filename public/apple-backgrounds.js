@@ -2,7 +2,7 @@ window.APPLE_BACKGROUNDS = [
   {
     "id": "custom-sequoia-local",
     "label": "Sequoia Local",
-    "url": "./assets/mac-wallpaper-sequoia.jpg",
+    "url": "/assets/mac-wallpaper-sequoia.jpg",
     "group": "Custom"
   },
   {
@@ -968,5 +968,29 @@ window.resolveAppleBackground = function(value, extras = []) {
   if (!value || value === "none") return "";
   const all = [...extras, ...window.APPLE_BACKGROUNDS];
   const match = all.find((item) => item.id === value);
-  return match ? match.url : "";
+  if (!match || !match.url) return "";
+  const raw = String(match.url).trim();
+  if (!raw) return "";
+  if (raw.startsWith("./")) return `/${raw.slice(2)}`;
+  if (raw.startsWith("/")) return raw;
+
+  const prefixEncoded = "file:///System/Library/Desktop%20Pictures/";
+  const prefixPlain = "file:///System/Library/Desktop Pictures/";
+  if (raw.startsWith(prefixEncoded) || raw.startsWith(prefixPlain)) {
+    const relativeEncoded = raw.startsWith(prefixEncoded) ? raw.slice(prefixEncoded.length) : raw.slice(prefixPlain.length);
+    const relativeRaw = decodeURIComponent(relativeEncoded);
+    const normalized = relativeRaw.replace(/^\/+/, "");
+    const basename = normalized.split("/").pop() || "";
+    const lower = normalized.toLowerCase();
+    if (lower.endsWith(".heic") && !normalized.startsWith(".thumbnails/") && !normalized.startsWith(".wallpapers/")) {
+      const thumbName = encodeURIComponent(basename).replace(/\.heic$/i, ".jpg");
+      return `/apple-wallpapers/.thumbnails/${thumbName}`;
+    }
+    const relativePath = normalized
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+    return `/apple-wallpapers/${relativePath}`.replace(/\.heic$/i, ".jpg");
+  }
+  return raw;
 };
