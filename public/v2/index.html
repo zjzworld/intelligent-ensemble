@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design Guidelines v2 · Signal Grid Flat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f4ef;
+      --bg-soft: #eeebe4;
+      --surface: #fffdfa;
+      --surface-2: #f2eee7;
+      --ink: #17191d;
+      --ink-soft: #3f454e;
+      --muted: #666b72;
+      --line: #d7d0c5;
+      --line-strong: #bfb4a5;
+      --accent: #2952e3;
+      --accent-soft: rgba(41, 82, 227, 0.1);
+      --signal: #e0562f;
+      --shadow: 0 12px 30px rgba(24, 20, 14, 0.08);
+      --grid-alpha: 0.06;
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --radius-xl: 10px;
+      --panel-pad: 24px;
+      --border-width: 1px;
+      --motion-fast: 120ms;
+      --motion-normal: 180ms;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --bg-image: linear-gradient(180deg, rgba(246, 244, 239, 0.98), rgba(238, 235, 228, 0.98));
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Roboto", sans-serif;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+      color: var(--ink);
+      background: var(--bg-image);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(23, 25, 29, var(--grid-alpha)) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23, 25, 29, var(--grid-alpha)) 1px, transparent 1px);
+      background-size: 28px 28px;
+      z-index: 0;
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 18%, transparent 86%, rgba(0, 0, 0, 0.4));
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 28%, transparent 74%, rgba(255, 255, 255, 0.18));
+      z-index: 0;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .display {
+      font-family: "Barlow Condensed", sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.012em;
+      text-transform: uppercase;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(1320px, 92vw);
+      margin: 0 auto;
+      padding: 24px 0 64px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 14px;
+      z-index: 20;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px 14px;
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 253, 250, 0.9);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      font-size: 16px;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .topbar-right,
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .nav a,
+    .selector {
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 8px 10px;
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--surface-2);
+      transition: background var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease), transform var(--motion-fast) var(--ease);
+    }
+
+    .selector {
+      font-family: "Roboto", sans-serif;
+      outline: none;
+    }
+
+    .nav a:hover,
+    .selector:hover {
+      color: var(--ink);
+      background: var(--surface);
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+    }
+
+    .panel {
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      padding: var(--panel-pad);
+      transition: transform var(--motion-normal) var(--ease), border-color var(--motion-normal) var(--ease), box-shadow var(--motion-normal) var(--ease), background var(--motion-normal) var(--ease);
+    }
+
+    .panel:hover {
+      transform: translateY(-2px);
+      border-color: var(--line-strong);
+      box-shadow: 0 16px 34px rgba(24, 20, 14, 0.11);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: stretch;
+    }
+
+    .hero-main,
+    .hero-docket {
+      min-height: 100%;
+    }
+
+    .eyebrow,
+    .caps,
+    .meta-label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    .section-title,
+    .stat-number,
+    .hero-title,
+    .brand-mark {
+      font-family: "Barlow Condensed", sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .hero-title {
+      margin-top: 10px;
+      font-size: clamp(52px, 8vw, 100px);
+      line-height: 0.9;
+      max-width: 820px;
+      text-wrap: balance;
+    }
+
+    .accent {
+      color: var(--accent);
+    }
+
+    .subtitle,
+    .note,
+    .body-copy,
+    .table,
+    .preview-copy,
+    .input,
+    .item-copy,
+    .status-copy,
+    .focus-copy,
+    .compare-table td,
+    .compare-table th {
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .subtitle,
+    .note,
+    .body-copy,
+    .preview-copy,
+    .item-copy,
+    .status-copy,
+    .focus-copy {
+      color: var(--muted);
+    }
+
+    .subtitle {
+      max-width: 760px;
+      margin: 18px 0 0;
+    }
+
+    .action-row,
+    .tag-row,
+    .tab-row,
+    .state-row,
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .action-row {
+      margin-top: 22px;
+    }
+
+    .button,
+    .button-alt,
+    .button-ghost,
+    .tag,
+    .pill,
+    .tab,
+    .state-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: var(--radius-md);
+      border: var(--border-width) solid var(--line);
+      background: var(--surface-2);
+      color: var(--ink-soft);
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: transform var(--motion-fast) var(--ease), background var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease);
+    }
+
+    .button {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #f7f8fb;
+      box-shadow: 0 10px 20px color-mix(in srgb, var(--accent) 24%, transparent);
+    }
+
+    .button-alt {
+      background: color-mix(in srgb, var(--signal) 10%, var(--surface));
+      border-color: color-mix(in srgb, var(--signal) 24%, var(--line));
+      color: var(--signal);
+    }
+
+    .button-ghost,
+    .tag,
+    .pill,
+    .tab,
+    .state-pill {
+      min-height: 34px;
+      padding: 0 12px;
+      background: var(--surface-2);
+    }
+
+    .button:hover,
+    .button-alt:hover,
+    .button-ghost:hover,
+    .tab:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      box-shadow: 0 10px 20px rgba(24, 20, 14, 0.08);
+    }
+
+    .tag-row {
+      margin-top: 18px;
+    }
+
+    .tag {
+      color: var(--ink-soft);
+    }
+
+    .hero-docket {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      background:
+        linear-gradient(180deg, rgba(41, 82, 227, 0.05), transparent 32%),
+        var(--surface);
+    }
+
+    .docket-head {
+      display: grid;
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: var(--border-width) solid var(--line);
+    }
+
+    .docket-title {
+      font-family: "Barlow Condensed", sans-serif;
+      font-size: 34px;
+      line-height: 0.9;
+      text-transform: uppercase;
+      margin: 0;
+      color: var(--ink);
+    }
+
+    .docket-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .docket-item {
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      background: var(--surface-2);
+    }
+
+    .docket-value {
+      margin-top: 8px;
+      font-family: "Barlow Condensed", sans-serif;
+      font-size: 26px;
+      line-height: 0.9;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .hero-main {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .hero-copy {
+      display: grid;
+      gap: 0;
+    }
+
+    .hero-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      margin-top: 22px;
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--surface-2);
+    }
+
+    .strip-item {
+      padding: 16px 18px;
+      border-right: var(--border-width) solid var(--line);
+    }
+
+    .strip-item:last-child {
+      border-right: 0;
+    }
+
+    .strip-value {
+      margin-top: 8px;
+      font-family: "Barlow Condensed", sans-serif;
+      font-size: 34px;
+      line-height: 0.92;
+      color: var(--ink);
+    }
+
+    .section {
+      margin-top: 24px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 40px;
+      line-height: 0.94;
+    }
+
+    .section-note {
+      max-width: 520px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .grid-two,
+    .grid-three,
+    .grid-four,
+    .control-grid,
+    .bench-grid,
+    .oc-layout,
+    .oc-lower,
+    .stage-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-two,
+    .control-grid,
+    .oc-lower,
+    .stage-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-three,
+    .bench-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-four,
+    .oc-layout {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .mini-card,
+    .token-card,
+    .bench-card,
+    .queue-card,
+    .activity-card,
+    .health-card,
+    .focus-card,
+    .stat-card,
+    .stage-card {
+      min-height: 100%;
+    }
+
+    .mini-card h3,
+    .token-card h3,
+    .bench-card h3,
+    .queue-card h3,
+    .activity-card h3,
+    .health-card h3,
+    .focus-card h3,
+    .stage-card h3 {
+      margin: 0 0 12px;
+      font-size: 28px;
+      line-height: 0.94;
+    }
+
+    .swatch {
+      width: 100%;
+      height: 72px;
+      border-radius: 6px;
+      border: var(--border-width) solid var(--line);
+      margin-bottom: 14px;
+    }
+
+    .token-name,
+    .metric-label,
+    .table-head {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .token-value,
+    .metric-value {
+      margin-top: 6px;
+      font-family: "Barlow Condensed", sans-serif;
+      font-size: 34px;
+      line-height: 0.92;
+      color: var(--ink);
+    }
+
+    .input {
+      min-height: 44px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--ink-soft);
+    }
+
+    .tab.is-active {
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+      background: var(--accent-soft);
+    }
+
+    .state-pill.good {
+      color: #315f4e;
+      background: rgba(92, 134, 99, 0.12);
+      border-color: rgba(92, 134, 99, 0.2);
+    }
+
+    .state-pill.warn {
+      color: #8b6026;
+      background: rgba(224, 149, 74, 0.12);
+      border-color: rgba(224, 149, 74, 0.2);
+    }
+
+    .state-pill.alert {
+      color: #a14132;
+      background: rgba(224, 86, 47, 0.12);
+      border-color: rgba(224, 86, 47, 0.2);
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .control input,
+    .control select {
+      width: 100%;
+    }
+
+    .control input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    .control select {
+      min-height: 42px;
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 12px;
+      font-family: "Roboto", sans-serif;
+    }
+
+    .stage {
+      padding: 16px;
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-lg);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(242, 238, 231, 0.9)),
+        var(--bg-image);
+      box-shadow: var(--shadow);
+    }
+
+    .stage-toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .stage-card {
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      min-height: 188px;
+    }
+
+    .snippet {
+      margin-top: 14px;
+      padding: 18px;
+      border-radius: var(--radius-lg);
+      border: var(--border-width) solid #2b2e34;
+      background: #1c1f25;
+      color: #d8dee6;
+      white-space: pre-wrap;
+      font-family: "Roboto", sans-serif;
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .oc-shell {
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-xl);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .oc-shell-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: var(--border-width) solid var(--line);
+      background: var(--surface-2);
+      flex-wrap: wrap;
+    }
+
+    .oc-title {
+      font-size: 44px;
+      line-height: 0.92;
+    }
+
+    .oc-grid {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      min-height: 640px;
+    }
+
+    .oc-nav {
+      border-right: var(--border-width) solid var(--line);
+      background: linear-gradient(180deg, rgba(242, 238, 231, 0.88), rgba(255, 253, 250, 0.98));
+      padding: 18px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .oc-nav-top,
+    .sheet-head,
+    .sheet-table,
+    .sheet-footer,
+    .sheet-row {
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    .sheet-head,
+    .sheet-footer,
+    .sheet-table {
+      padding: 14px;
+    }
+
+    .oc-nav-kicker,
+    .sheet-columns {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .oc-nav-kicker {
+      margin-top: 8px;
+    }
+
+    .oc-nav-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .sheet-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 12px;
+      padding: 0 12px 8px;
+    }
+
+    .sheet-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .sheet-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 12px;
+      align-items: start;
+      padding: 12px;
+      transition: transform var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease), background var(--motion-fast) var(--ease);
+    }
+
+    .sheet-row:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      background: var(--surface);
+    }
+
+    .sheet-row.is-active {
+      border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    }
+
+    .sheet-module {
+      display: grid;
+      gap: 3px;
+    }
+
+    .sheet-title,
+    .sheet-footer-title {
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    .sheet-note,
+    .sheet-footer-copy {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .sheet-load,
+    .sheet-state {
+      min-width: 48px;
+      padding: 6px 8px;
+      border-radius: var(--radius-md);
+      border: var(--border-width) solid var(--line);
+      background: var(--surface-2);
+      text-align: center;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .sheet-state {
+      min-width: 60px;
+    }
+
+    .sheet-state.live {
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 22%, var(--line));
+      background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    }
+
+    .oc-main {
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-copy {
+      max-width: 420px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat-number {
+      margin-top: 10px;
+      font-size: 40px;
+      line-height: 0.92;
+      color: var(--ink);
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .item-row,
+    .status-row,
+    .focus-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 0;
+      border-top: var(--border-width) solid rgba(191, 180, 165, 0.48);
+    }
+
+    .item-row:first-of-type,
+    .status-row:first-of-type,
+    .focus-row:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .item-title,
+    .status-name,
+    .focus-title {
+      margin-bottom: 4px;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: var(--border-width) solid var(--line);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .compare-table th,
+    .compare-table td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: var(--border-width) solid rgba(191, 180, 165, 0.46);
+      vertical-align: top;
+      color: var(--ink-soft);
+    }
+
+    .compare-table th {
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .compare-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .footer {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 1140px) {
+      .hero,
+      .control-grid,
+      .oc-grid,
+      .oc-lower,
+      .stage-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .metric-grid,
+      .grid-four,
+      .oc-layout {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hero-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100%, 100vw);
+        padding: 16px 14px 42px;
+      }
+
+      .grid-two,
+      .grid-three,
+      .grid-four,
+      .metric-grid,
+      .oc-layout,
+      .bench-grid,
+      .stage-grid,
+      .hero-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-title {
+        font-size: 56px;
+      }
+
+      .section-title,
+      .oc-title {
+        font-size: 34px;
+      }
+
+      .section-head {
+        display: grid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="brand display">Signal Grid Flat</div>
+      <div class="topbar-right">
+        <nav class="nav">
+          <a href="#principles">Principles</a>
+          <a href="#playground">Playground</a>
+          <a href="#openclaw">OpenClaw</a>
+          <a href="/v1/">v1</a>
+          <a href="/v3/">v3</a>
+          <a href="/v4/">v4</a>
+          <a href="/v5/">v5</a>
+        </nav>
+        <select id="schemeSelect" class="selector" aria-label="Accent scheme">
+          <option value="cobalt">Cobalt</option>
+          <option value="signal">Signal Red</option>
+          <option value="graphite">Graphite</option>
+        </select>
+        <select id="bgSelect" class="selector" aria-label="Apple wallpaper"></select>
+      </div>
+    </div>
+
+    <section class="hero">
+      <aside class="panel hero-docket">
+        <div class="docket-head">
+          <div class="eyebrow display">System Sheet</div>
+          <h2 class="docket-title">Technical flat field</h2>
+          <p class="note">A flatter, harder layout book for product teams that care more about control than atmosphere.</p>
+        </div>
+        <div class="docket-grid">
+          <div class="docket-item">
+            <div class="meta-label">Primary Fit</div>
+            <div class="docket-value">Operator UI</div>
+            <div class="note">Best for control planes, admin shells, and queue-heavy interfaces.</div>
+          </div>
+          <div class="docket-item">
+            <div class="meta-label">Accent Logic</div>
+            <div class="docket-value">Single Channel</div>
+            <div class="note">Color behaves like signal, not ambience, so active state stays obvious.</div>
+          </div>
+          <div class="docket-item">
+            <div class="meta-label">Motion</div>
+            <div class="docket-value">Compressed</div>
+            <div class="note">Hover and press stay short and tactile. No soft transitions, no glass drift.</div>
+          </div>
+        </div>
+      </aside>
+      <article class="panel hero-main">
+        <div class="hero-copy">
+        <div class="eyebrow display">Flat v2</div>
+        <h1 class="hero-title"><span class="accent">Hard-edge</span> flat design with stronger structure, cleaner hierarchy, and a technical product feel.</h1>
+        <p class="subtitle">This is not the soft Apple-style flat you had before. It is a more deliberate flat direction: tighter borders, harder geometry, visible grid logic, and one controlled accent channel. It should feel more like a premium control system than a generic admin template.</p>
+        <div class="action-row">
+          <a class="button" href="#openclaw">View OpenClaw Flat</a>
+          <a class="button-alt" href="#playground">Tune The Grid</a>
+          <a class="button-ghost" href="#compare">Compare Fit</a>
+        </div>
+        <div class="tag-row">
+          <span class="tag">Technical</span>
+          <span class="tag">Near-square geometry</span>
+          <span class="tag">Flat only</span>
+          <span class="tag">High-density safe</span>
+        </div>
+        </div>
+        <div class="hero-strip">
+          <div class="strip-item">
+            <div class="meta-label">Clarity</div>
+            <div class="strip-value">9.6</div>
+            <div class="note">Reads instantly under dense modules.</div>
+          </div>
+          <div class="strip-item">
+            <div class="meta-label">Brand</div>
+            <div class="strip-value">8.1</div>
+            <div class="note">Condensed type prevents enterprise blandness.</div>
+          </div>
+          <div class="strip-item">
+            <div class="meta-label">Production</div>
+            <div class="strip-value">9.8</div>
+            <div class="note">Easy to scale into real product states.</div>
+          </div>
+          <div class="strip-item">
+            <div class="meta-label">Density</div>
+            <div class="strip-value">9.4</div>
+            <div class="note">Holds up when tables and logs take over.</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="section" id="principles">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">Why This Flat Direction Works</h2>
+        </div>
+        <p class="section-note">The goal here is not minimalism for its own sake. It is control. The layout speaks through borders, spacing, and rhythm, so the product stays sharp even when the content gets busy.</p>
+      </div>
+      <div class="grid-four">
+        <article class="panel mini-card">
+          <h3>Explicit Structure</h3>
+          <p class="body-copy">Hard borders and clear blocks make the system robust under dashboards, settings, and dense internal tools.</p>
+        </article>
+        <article class="panel mini-card">
+          <h3>One Accent Channel</h3>
+          <p class="body-copy">Use color as signal, not decoration. The accent should guide action and active state, not color the whole screen.</p>
+        </article>
+        <article class="panel mini-card">
+          <h3>Compressed Motion</h3>
+          <p class="body-copy">Hover and press are tactile and fast. No ambient animation means the UI feels precise.</p>
+        </article>
+        <article class="panel mini-card">
+          <h3>Sharp Personality</h3>
+          <p class="body-copy">Barlow Condensed keeps the flat system from collapsing into ordinary enterprise UI.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">Token Matrix</h2>
+        </div>
+        <p class="section-note">The palette is intentionally disciplined: paper neutrals, dark ink, one active accent, one signal color. The background can change, but the hierarchy should not.</p>
+      </div>
+      <div class="grid-four">
+        <article class="panel token-card">
+          <div class="swatch" style="background:#f6f4ef"></div>
+          <div class="token-name">Canvas</div>
+          <div class="token-value">#F6F4EF</div>
+          <div class="note">A neutral light canvas that works with or without wallpaper.</div>
+        </article>
+        <article class="panel token-card">
+          <div class="swatch" style="background:#fffdfa"></div>
+          <div class="token-name">Surface</div>
+          <div class="token-value">#FFFDFA</div>
+          <div class="note">Solid panel surface for trustworthy reading.</div>
+        </article>
+        <article class="panel token-card">
+          <div class="swatch" style="background:#17191d"></div>
+          <div class="token-name">Ink</div>
+          <div class="token-value">#17191D</div>
+          <div class="note">High-contrast body text and data labels.</div>
+        </article>
+        <article class="panel token-card">
+          <div class="swatch accent-swatch" style="background:var(--accent)"></div>
+          <div class="token-name">Accent</div>
+          <div class="token-value accent">Active Scheme</div>
+          <div class="note">Use for CTA, active tabs, progress, and focus states.</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">Component Bench</h2>
+        </div>
+        <p class="section-note">The components are intentionally plain, but the geometry and accent behavior give them character. This is what makes the system usable without feeling dead.</p>
+      </div>
+      <div class="bench-grid">
+        <article class="panel bench-card">
+          <h3>Actions</h3>
+          <div class="action-row">
+            <a class="button" href="#">Primary</a>
+            <a class="button-alt" href="#">Escalate</a>
+            <a class="button-ghost" href="#">Ghost</a>
+          </div>
+        </article>
+        <article class="panel bench-card">
+          <h3>Navigation</h3>
+          <div class="tab-row">
+            <span class="tab is-active">Overview</span>
+            <span class="tab">Queues</span>
+            <span class="tab">Reports</span>
+          </div>
+        </article>
+        <article class="panel bench-card">
+          <h3>States</h3>
+          <div class="state-row">
+            <span class="state-pill good">Healthy</span>
+            <span class="state-pill warn">Review</span>
+            <span class="state-pill alert">Critical</span>
+          </div>
+        </article>
+      </div>
+      <div class="grid-two" style="margin-top:16px;">
+        <article class="panel bench-card">
+          <h3>Input Fields</h3>
+          <div class="input">Search agents, incidents, or knowledge</div>
+          <div class="input" style="margin-top:10px;">Filter by owner, region, or priority</div>
+        </article>
+        <article class="panel bench-card">
+          <h3>Table Rhythm</h3>
+          <p class="body-copy">Rows should use explicit separators and tight labels. The screen earns its premium feel through order, not through visual softness.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="playground">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">Signal Playground</h2>
+        </div>
+        <p class="section-note">This playground edits the flat system through things that matter operationally: border weight, corner severity, panel density, and background context.</p>
+      </div>
+      <div class="control-grid">
+        <article class="panel">
+          <div class="control-stack">
+            <div class="control">
+              <label for="borderWidthRange">Border Weight</label>
+              <input id="borderWidthRange" type="range" min="1" max="3" value="1" />
+            </div>
+            <div class="control">
+              <label for="radiusRange">Corner Radius</label>
+              <input id="radiusRange" type="range" min="2" max="12" value="8" />
+            </div>
+            <div class="control">
+              <label for="densityRange">Panel Density</label>
+              <input id="densityRange" type="range" min="18" max="34" value="24" />
+            </div>
+            <div class="control">
+              <label for="gridRange">Grid Visibility</label>
+              <input id="gridRange" type="range" min="0" max="12" value="6" />
+            </div>
+              <div class="control">
+                <label for="stageBackgroundSelect">Stage Wallpaper</label>
+                <select id="stageBackgroundSelect"></select>
+              </div>
+          </div>
+        </article>
+        <div class="stage">
+          <div class="stage-toolbar">
+            <span class="pill">Structured</span>
+            <span class="pill">Flat Only</span>
+            <span class="pill">Operational</span>
+          </div>
+          <div class="stage-grid">
+            <article class="stage-card">
+              <h3>Command Block</h3>
+              <p class="preview-copy">The main panel uses the accent once, then lets borders and spacing define hierarchy. This is how flat UI stays premium.</p>
+              <div class="action-row" style="margin-top:16px;">
+                <a class="button" href="#">Run Sweep</a>
+                <a class="button-ghost" href="#">Inspect</a>
+              </div>
+            </article>
+            <article class="stage-card">
+              <h3>Support Block</h3>
+              <p class="preview-copy">Secondary modules stay quieter. They keep enough contrast to remain readable over wallpaper, but they do not simulate glass.</p>
+              <div class="state-row" style="margin-top:16px;">
+                <span class="state-pill good">Stable</span>
+                <span class="state-pill warn">Review</span>
+              </div>
+            </article>
+          </div>
+          <div class="snippet">Design Style:
+technical flat dashboard
+warm-neutral canvas
+near-square geometry
+narrow condensed display type
+single accent channel
+crisp borders and tactile micro motion
+
+Use Tailwind + React.
+Do not reintroduce glass, blur, or decorative gradients.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="openclaw">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">OpenClaw Flat Rebuild</h2>
+        </div>
+        <p class="section-note">This is the flat system pushed into a stronger product shape. It should feel more like a real operator console than a generic dashboard theme.</p>
+      </div>
+      <div class="oc-shell">
+        <div class="oc-shell-header">
+          <div class="brand-mark display">OpenClaw Flat Console</div>
+          <div class="toolbar-actions">
+            <span class="pill">Live</span>
+            <span class="pill">High Focus</span>
+            <span class="pill">No Glass</span>
+          </div>
+        </div>
+        <div class="oc-grid">
+          <aside class="oc-nav">
+            <div class="sheet-head">
+              <div class="brand-mark display">OpenClaw</div>
+              <div class="oc-nav-kicker">Operator sheet navigation</div>
+              <div class="oc-nav-meta">
+                <span class="pill">4 alerts</span>
+                <span class="pill">27 jobs</span>
+              </div>
+            </div>
+            <div class="sheet-table">
+              <div class="sheet-columns">
+                <span>Module</span>
+                <span>Load</span>
+                <span>State</span>
+              </div>
+              <div class="sheet-list">
+                <div class="sheet-row is-active">
+                  <div class="sheet-module">
+                    <div class="sheet-title">Overview</div>
+                    <div class="sheet-note">Primary metrics, watchpoints, and current focus queue.</div>
+                  </div>
+                  <div class="sheet-load">04</div>
+                  <div class="sheet-state live">Live</div>
+                </div>
+                <div class="sheet-row">
+                  <div class="sheet-module">
+                    <div class="sheet-title">Runs</div>
+                    <div class="sheet-note">Dispatch history, automated jobs, and execution outcomes.</div>
+                  </div>
+                  <div class="sheet-load">09</div>
+                  <div class="sheet-state">Run</div>
+                </div>
+                <div class="sheet-row">
+                  <div class="sheet-module">
+                    <div class="sheet-title">Queues</div>
+                    <div class="sheet-note">Backlog pressure, routing rules, and escalation windows.</div>
+                  </div>
+                  <div class="sheet-load">03</div>
+                  <div class="sheet-state">Watch</div>
+                </div>
+                <div class="sheet-row">
+                  <div class="sheet-module">
+                    <div class="sheet-title">Health</div>
+                    <div class="sheet-note">Runtime health, incident thresholds, and sync stability.</div>
+                  </div>
+                  <div class="sheet-load">02</div>
+                  <div class="sheet-state">OK</div>
+                </div>
+                <div class="sheet-row">
+                  <div class="sheet-module">
+                    <div class="sheet-title">Memory</div>
+                    <div class="sheet-note">Context quality, compaction timing, and retrieval integrity.</div>
+                  </div>
+                  <div class="sheet-load">01</div>
+                  <div class="sheet-state">Sync</div>
+                </div>
+              </div>
+            </div>
+            <div class="sheet-footer">
+              <div class="sheet-footer-title">Shift Note</div>
+              <div class="sheet-footer-copy">Latency is stable after the routing patch. Memory compaction remains on schedule.</div>
+            </div>
+          </aside>
+          <main class="oc-main">
+            <div class="toolbar">
+              <div>
+                <div class="eyebrow display">Technical Flat Shell</div>
+                <h3 class="oc-title"><span class="accent">OpenClaw</span> Command Grid</h3>
+              </div>
+              <div class="toolbar-copy">A harder, more precise dashboard shell designed for long-session monitoring and real operational use.</div>
+            </div>
+            <div class="metric-grid">
+              <article class="panel stat-card">
+                <div class="metric-label">Agent Success</div>
+                <div class="stat-number">98.9%</div>
+                <div class="note">7-day completion quality.</div>
+              </article>
+              <article class="panel stat-card">
+                <div class="metric-label">Median Latency</div>
+                <div class="stat-number">128ms</div>
+                <div class="note">Dispatch to output.</div>
+              </article>
+              <article class="panel stat-card">
+                <div class="metric-label">Active Jobs</div>
+                <div class="stat-number">27</div>
+                <div class="note">Across route and archive flows.</div>
+              </article>
+              <article class="panel stat-card">
+                <div class="metric-label">Pending Alerts</div>
+                <div class="stat-number">4</div>
+                <div class="note">All currently owned.</div>
+              </article>
+            </div>
+            <div class="oc-lower">
+              <div class="stack">
+                <article class="panel queue-card">
+                  <h3>Priority Queue</h3>
+                  <div class="item-row">
+                    <div>
+                      <div class="item-title">Payment sync timeout</div>
+                      <div class="item-copy">Two regions exceeded retry window after batch rollover.</div>
+                    </div>
+                    <span class="state-pill alert">Critical</span>
+                  </div>
+                  <div class="item-row">
+                    <div>
+                      <div class="item-title">Memory drift review</div>
+                      <div class="item-copy">One assistant summary pattern deviated from reference tone.</div>
+                    </div>
+                    <span class="state-pill warn">Review</span>
+                  </div>
+                  <div class="item-row">
+                    <div>
+                      <div class="item-title">Ops brief proof</div>
+                      <div class="item-copy">Morning briefing is ready for sign-off and release.</div>
+                    </div>
+                    <span class="state-pill good">Ready</span>
+                  </div>
+                </article>
+                <article class="panel activity-card">
+                  <h3>Recent Activity</h3>
+                  <div class="item-row">
+                    <div>
+                      <div class="item-title">Route optimizer</div>
+                      <div class="item-copy">Rebalanced job weights after latency spike.</div>
+                    </div>
+                    <span class="pill">4m</span>
+                  </div>
+                  <div class="item-row">
+                    <div>
+                      <div class="item-title">Archive worker</div>
+                      <div class="item-copy">Closed 19 completed threads and normalized tags.</div>
+                    </div>
+                    <span class="pill">12m</span>
+                  </div>
+                </article>
+              </div>
+              <div class="stack">
+                <article class="panel health-card">
+                  <h3>System Health</h3>
+                  <div class="status-row">
+                    <div>
+                      <div class="status-name">Queue Layer</div>
+                      <div class="status-copy">No sustained backlog pressure after balancing patch.</div>
+                    </div>
+                    <span class="state-pill good">Healthy</span>
+                  </div>
+                  <div class="status-row">
+                    <div>
+                      <div class="status-name">Memory Store</div>
+                      <div class="status-copy">Cold start improved and read performance remains stable.</div>
+                    </div>
+                    <span class="state-pill good">Stable</span>
+                  </div>
+                  <div class="status-row">
+                    <div>
+                      <div class="status-name">Sync Gateway</div>
+                      <div class="status-copy">One handshake failed and recovered on second attempt.</div>
+                    </div>
+                    <span class="state-pill warn">Watch</span>
+                  </div>
+                </article>
+                <article class="panel focus-card">
+                  <h3>Personal Focus</h3>
+                  <div class="focus-row">
+                    <div>
+                      <div class="focus-title">Design comparison</div>
+                      <div class="focus-copy">Choose the final production direction for componentization.</div>
+                    </div>
+                    <span class="pill">Now</span>
+                  </div>
+                  <div class="focus-row">
+                    <div>
+                      <div class="focus-title">Dashboard shell split</div>
+                      <div class="focus-copy">Extract KPI, queue, health, and memory into reusable modules.</div>
+                    </div>
+                    <span class="pill">Next</span>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="compare">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">When v2 Should Win</h2>
+        </div>
+        <p class="section-note">This version is the right answer when usability, implementation simplicity, and operational clarity matter more than atmospheric material effects.</p>
+      </div>
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Use Case</th>
+            <th>Why It Fits</th>
+            <th>Watch Out For</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Internal Tools</strong></td>
+            <td>Fast to build, easy to scan, and stable under dense forms and tables.</td>
+            <td>Needs strong typography and spacing or it can flatten out too much.</td>
+          </tr>
+          <tr>
+            <td><strong>Operator Dashboards</strong></td>
+            <td>Probably the safest of the three when the interface is used all day.</td>
+            <td>Use the accent sparingly or it starts to feel noisy.</td>
+          </tr>
+          <tr>
+            <td><strong>Product Website</strong></td>
+            <td>Works if the product itself is technical and clarity-first.</td>
+            <td>Will feel less luxurious than v1 or v3.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="footer">Design Guidelines v2 · Signal Grid Flat</div>
+    </section>
+  </div>
+
+  <script src="/apple-backgrounds.js"></script>
+  <script>
+    const root = document.documentElement;
+    const schemeSelect = document.getElementById("schemeSelect");
+    const bgSelect = document.getElementById("bgSelect");
+    const stageBackgroundSelect = document.getElementById("stageBackgroundSelect");
+    const borderWidthRange = document.getElementById("borderWidthRange");
+    const radiusRange = document.getElementById("radiusRange");
+    const densityRange = document.getElementById("densityRange");
+    const gridRange = document.getElementById("gridRange");
+
+    const schemes = {
+      cobalt: {
+        accent: "#2952e3",
+        accentSoft: "rgba(41, 82, 227, 0.1)",
+        signal: "#e0562f"
+      },
+      signal: {
+        accent: "#d14b2d",
+        accentSoft: "rgba(209, 75, 45, 0.1)",
+        signal: "#2952e3"
+      },
+      graphite: {
+        accent: "#232933",
+        accentSoft: "rgba(35, 41, 51, 0.08)",
+        signal: "#4f73d8"
+      }
+    };
+
+    function updateFlat() {
+      const scheme = schemes[schemeSelect.value] || schemes.cobalt;
+      const wallpaper = window.resolveAppleBackground(bgSelect.value);
+      const stageWallpaper = stageBackgroundSelect.value === "match-page"
+        ? wallpaper
+        : window.resolveAppleBackground(stageBackgroundSelect.value);
+      const borderWidth = Number(borderWidthRange.value);
+      const radius = Number(radiusRange.value);
+      const density = Number(densityRange.value);
+      const grid = Number(gridRange.value) / 100;
+      const baseBackground = wallpaper
+        ? `linear-gradient(180deg, rgba(246, 244, 239, 0.84), rgba(238, 235, 228, 0.88)), url('${wallpaper}') center center / cover fixed no-repeat`
+        : "radial-gradient(840px 420px at 0% 0%, rgba(255,255,255,0.78), transparent 62%), linear-gradient(180deg, rgba(246, 244, 239, 0.98), rgba(238, 235, 228, 0.98))";
+      const stageBackground = stageWallpaper
+        ? `url('${stageWallpaper}') center center / cover no-repeat`
+        : "linear-gradient(180deg, rgba(251, 250, 247, 1), rgba(242, 239, 232, 1))";
+
+      root.style.setProperty("--accent", scheme.accent);
+      root.style.setProperty("--accent-soft", scheme.accentSoft);
+      root.style.setProperty("--signal", scheme.signal);
+      root.style.setProperty("--bg-image", baseBackground);
+      root.style.setProperty("--border-width", `${borderWidth}px`);
+      root.style.setProperty("--radius-sm", `${Math.max(2, radius - 4)}px`);
+      root.style.setProperty("--radius-md", `${Math.max(4, radius - 2)}px`);
+      root.style.setProperty("--radius-lg", `${radius}px`);
+      root.style.setProperty("--radius-xl", `${radius + 2}px`);
+      root.style.setProperty("--panel-pad", `${density}px`);
+      root.style.setProperty("--grid-alpha", grid.toFixed(2));
+      document.querySelector(".stage").style.background = `linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(242, 238, 231, 0.9)), ${stageBackground}`;
+    }
+
+    window.populateAppleBackgroundSelect(bgSelect, { defaultValue: "custom-sequoia-local", includeNone: true, noneLabel: "Paper Field" });
+    window.populateAppleBackgroundSelect(stageBackgroundSelect, {
+      defaultValue: "match-page",
+      extras: [{ id: "match-page", label: "Match Page", url: "", group: "Custom" }],
+      includeNone: true,
+      noneLabel: "Plain White"
+    });
+
+    schemeSelect.addEventListener("change", updateFlat);
+    bgSelect.addEventListener("change", updateFlat);
+    stageBackgroundSelect.addEventListener("change", updateFlat);
+    borderWidthRange.addEventListener("input", updateFlat);
+    radiusRange.addEventListener("input", updateFlat);
+    densityRange.addEventListener("input", updateFlat);
+    gridRange.addEventListener("input", updateFlat);
+
+    updateFlat();
+  </script>
+</body>
+</html>

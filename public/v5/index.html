@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design Guidelines v5 · Quiet Form System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f8f7f3;
+      --bg-soft: #efeee9;
+      --paper: rgba(255, 255, 255, 0.72);
+      --paper-strong: rgba(255, 255, 255, 0.92);
+      --ink: #191d22;
+      --ink-soft: #3f4853;
+      --muted: #6f7782;
+      --line: rgba(34, 39, 46, 0.12);
+      --line-strong: rgba(34, 39, 46, 0.2);
+      --accent: #5e7288;
+      --accent-2: #8a7d6b;
+      --accent-soft: rgba(94, 114, 136, 0.08);
+      --shadow: 0 12px 32px rgba(19, 24, 32, 0.04);
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 22px;
+      --panel-pad: 20px;
+      --bg-image: linear-gradient(180deg, rgba(248, 247, 243, 1), rgba(239, 238, 233, 1));
+      --motion-fast: 120ms;
+      --motion-normal: 180ms;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Instrument Sans", sans-serif;
+      color: var(--ink);
+      background: var(--bg-image);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(780px 320px at 50% 0%, rgba(255, 255, 255, 0.46), transparent 70%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 26%, transparent 74%, rgba(255, 255, 255, 0.14));
+      z-index: 0;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .display {
+      font-family: "Sora", sans-serif;
+      font-weight: 500;
+      letter-spacing: -0.04em;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(1320px, 92vw);
+      margin: 0 auto;
+      padding: 22px 0 64px;
+      display: grid;
+      gap: 28px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 16px 0 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(248, 247, 243, 0.94), rgba(248, 247, 243, 0.78));
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      font-size: 16px;
+      color: var(--ink);
+    }
+
+    .nav,
+    .topbar-right,
+    .action-row,
+    .hero-meta,
+    .spec-list,
+    .toolbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .nav a,
+    .selector,
+    .button,
+    .button-ghost,
+    .meta-pill,
+    .note-pill {
+      text-decoration: none;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 0;
+      padding: 0;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .selector {
+      font-family: "Instrument Sans", sans-serif;
+      outline: none;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 4px;
+    }
+
+    .button,
+    .button-ghost {
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.64);
+      transition:
+        transform var(--motion-fast) var(--ease),
+        border-color var(--motion-fast) var(--ease),
+        background var(--motion-fast) var(--ease);
+    }
+
+    .button {
+      color: var(--ink);
+      border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+      background: color-mix(in srgb, var(--accent) 8%, white);
+    }
+
+    .button-ghost {
+      color: var(--ink-soft);
+    }
+
+    .nav a:hover,
+    .selector:hover,
+    .button:hover,
+    .button-ghost:hover {
+      color: var(--ink);
+      transform: translateY(-1px);
+    }
+
+    .frame {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .rail {
+      position: sticky;
+      top: 86px;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .rail-block {
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .rail-label,
+    .section-kicker,
+    .eyebrow,
+    .spec-label,
+    .chapter-status {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .rail-title {
+      margin: 0;
+      font-size: 26px;
+      line-height: 0.92;
+      color: var(--ink);
+    }
+
+    .rail-copy,
+    .section-note,
+    .hero-copy,
+    .body-copy,
+    .helper,
+    .chapter-note,
+    .footer-copy,
+    .compare-table td,
+    .compare-table th {
+      font-size: 14px;
+      line-height: 1.78;
+      color: var(--muted);
+    }
+
+    .rail-links {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .rail-links a {
+      text-decoration: none;
+      color: var(--ink-soft);
+    }
+
+    .content {
+      display: grid;
+      gap: 42px;
+    }
+
+    .section {
+      display: grid;
+      gap: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    .hero {
+      padding-top: 6px;
+      border-top: 0;
+    }
+
+    .hero-title,
+    .section-title,
+    .spec-value,
+    .chapter-no,
+    .metric-value,
+    .oc-brand {
+      font-family: "Sora", sans-serif;
+      font-weight: 500;
+      letter-spacing: -0.05em;
+      margin: 0;
+      color: var(--ink);
+    }
+
+    .hero-title {
+      font-size: clamp(56px, 8vw, 96px);
+      line-height: 0.9;
+      max-width: 900px;
+      text-wrap: balance;
+    }
+
+    .section-title {
+      font-size: 38px;
+      line-height: 0.94;
+    }
+
+    .accent {
+      color: var(--accent);
+    }
+
+    .hero-copy {
+      max-width: 720px;
+      margin: 0;
+    }
+
+    .hero-meta {
+      justify-content: space-between;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+      margin-top: 22px;
+    }
+
+    .meta-pill,
+    .note-pill {
+      padding: 6px 0;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink-soft);
+    }
+
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .spec-block {
+      display: grid;
+      gap: 12px;
+    }
+
+    .spec-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .spec-row:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .spec-value {
+      font-size: 24px;
+      line-height: 0.96;
+    }
+
+    .playground-shell {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 24px;
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .control input,
+    .control select {
+      width: 100%;
+    }
+
+    .control input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    .control select {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.66);
+      padding: 0 12px;
+      font-family: "Instrument Sans", sans-serif;
+      color: var(--ink);
+    }
+
+    .minimal-stage {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .stage-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .stage-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 14px;
+    }
+
+    .stage-panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.78);
+      padding: 16px;
+    }
+
+    .snippet {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--ink-soft);
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.75;
+      margin: 0;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
+
+    .oc-shell {
+      border-top: 1px solid var(--line);
+      padding-top: 20px;
+    }
+
+    .oc-grid {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .oc-nav {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .oc-nav-head {
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .oc-brand {
+      font-size: 30px;
+      line-height: 0.94;
+    }
+
+    .chapter-list {
+      display: grid;
+    }
+
+    .chapter {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .chapter.is-active {
+      background: color-mix(in srgb, var(--accent) 6%, transparent);
+    }
+
+    .chapter-no {
+      font-size: 24px;
+      line-height: 0.92;
+      color: color-mix(in srgb, var(--accent) 72%, var(--ink-soft));
+    }
+
+    .chapter-title {
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    .chapter-count {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      padding-top: 2px;
+    }
+
+    .footer-note {
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+
+    .oc-main {
+      display: grid;
+      gap: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: end;
+      flex-wrap: wrap;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .toolbar-title {
+      font-family: "Sora", sans-serif;
+      font-weight: 500;
+      letter-spacing: -0.05em;
+      font-size: 46px;
+      line-height: 0.9;
+      margin: 0;
+      color: var(--ink);
+    }
+
+    .toolbar-copy {
+      max-width: 420px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .metric-grid,
+    .detail-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .metric-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .detail-grid {
+      grid-template-columns: 1.1fr 0.9fr;
+    }
+
+    .metric-card,
+    .detail-card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.76);
+      padding: 16px;
+      min-height: 100%;
+    }
+
+    .metric-value {
+      font-size: 38px;
+      line-height: 0.92;
+      margin: 10px 0 4px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .item-row,
+    .status-row,
+    .focus-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .item-row:first-of-type,
+    .status-row:first-of-type,
+    .focus-row:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .item-title,
+    .status-name,
+    .focus-title {
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-top: 1px solid var(--line);
+    }
+
+    .compare-table th,
+    .compare-table td {
+      padding: 14px 0;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      color: var(--ink-soft);
+    }
+
+    .compare-table th {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .footer-copy {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1120px) {
+      .frame,
+      .playground-shell,
+      .oc-grid,
+      .detail-grid,
+      .stage-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .rail {
+        position: static;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100%, 100vw);
+        padding: 16px 14px 42px;
+      }
+
+      .metric-grid,
+      .spec-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-title,
+      .toolbar-title,
+      .section-title {
+        font-size: 36px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="brand display">Quiet Form System</div>
+      <div class="topbar-right">
+        <nav class="nav">
+          <a href="#hero">Overview</a>
+          <a href="#tokens">Foundations</a>
+          <a href="#playground">Playground</a>
+          <a href="#openclaw">OpenClaw</a>
+          <a href="/v1/">v1</a>
+          <a href="/v2/">v2</a>
+          <a href="/v3/">v3</a>
+          <a href="/v4/">v4</a>
+        </nav>
+      </div>
+    </div>
+
+    <div class="frame">
+      <aside class="rail">
+        <div class="rail-block">
+          <div class="rail-label">Design Guidelines</div>
+          <h1 class="rail-title display">Quiet Form</h1>
+          <p class="rail-copy">A very minimal light system for product pages and dashboards that need to feel calm, sharp, and intentional without looking like OpenAI.</p>
+        </div>
+        <div class="rail-block">
+          <div class="rail-label">Color Edition</div>
+          <select id="schemeSelect" class="selector" aria-label="Color scheme">
+            <option value="stone">Stone</option>
+            <option value="mist">Mist Blue</option>
+            <option value="sage">Quiet Sage</option>
+          </select>
+        </div>
+        <div class="rail-block">
+          <div class="rail-label">Apple Wallpaper</div>
+          <select id="bgSelect" class="selector" aria-label="Apple wallpaper"></select>
+        </div>
+        <div class="rail-block">
+          <div class="rail-label">Wall Treatment</div>
+          <select id="wallMode" class="selector" aria-label="Wallpaper mode">
+            <option value="plain">Plain</option>
+            <option value="soft">Soft Wallpaper</option>
+            <option value="clear">Clear Wallpaper</option>
+          </select>
+        </div>
+        <div class="rail-block">
+          <div class="rail-label">Sections</div>
+          <div class="rail-links">
+            <a href="#hero">01 Overview</a>
+            <a href="#tokens">02 Foundations</a>
+            <a href="#playground">03 Playground</a>
+            <a href="#openclaw">04 OpenClaw</a>
+            <a href="#compare">05 Fit</a>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section class="section hero" id="hero">
+          <div class="section-kicker">v5 Minimal Light Direction</div>
+          <h2 class="hero-title">A near-silent product system built on <span class="accent">space, line, and restraint</span>.</h2>
+          <p class="hero-copy">This version is deliberately sparse. It uses thin borders, controlled typography, shallow light tones, and large negative space to create authority. The reference point is the clarity of OpenAI's minimalism, but the tone here is warmer, more editorial, and more page-like.</p>
+          <div class="action-row">
+            <a class="button" href="#openclaw">View OpenClaw Minimal</a>
+            <a class="button-ghost" href="#playground">Tune the System</a>
+          </div>
+          <div class="hero-meta">
+            <span class="meta-pill">Low surface noise</span>
+            <span class="meta-pill">Shallow light background</span>
+            <span class="meta-pill">Thin rule hierarchy</span>
+            <span class="meta-pill">Product-book layout</span>
+          </div>
+        </section>
+
+        <section class="section" id="tokens">
+          <div>
+            <div class="section-kicker">Foundations</div>
+            <h2 class="section-title">The system works because so little is allowed</h2>
+            <p class="section-note">There are almost no decorative moves here. The feeling comes from spacing, line weight, and slightly warm light tones. That is what keeps it minimal without looking empty.</p>
+          </div>
+          <div class="spec-grid">
+            <div class="spec-block">
+              <div class="spec-row">
+                <div>
+                  <div class="spec-label">Canvas</div>
+                  <div class="helper">Default page background.</div>
+                </div>
+                <div class="spec-value">Light + Warm</div>
+              </div>
+              <div class="spec-row">
+                <div>
+                  <div class="spec-label">Surface</div>
+                  <div class="helper">Used only where content needs containment.</div>
+                </div>
+                <div class="spec-value">Subtle</div>
+              </div>
+              <div class="spec-row">
+                <div>
+                  <div class="spec-label">Accent</div>
+                  <div class="helper">Use once per section or interaction group.</div>
+                </div>
+                <div class="spec-value">Muted</div>
+              </div>
+            </div>
+            <div class="spec-block">
+              <div class="spec-row">
+                <div>
+                  <div class="spec-label">Display</div>
+                  <div class="helper">Sora for restrained modern authority.</div>
+                </div>
+                <div class="spec-value">Precise</div>
+              </div>
+              <div class="spec-row">
+                <div>
+                  <div class="spec-label">Body</div>
+                  <div class="helper">Instrument Sans for quiet readability.</div>
+                </div>
+                <div class="spec-value">Neutral</div>
+              </div>
+              <div class="spec-row">
+                <div>
+                  <div class="spec-label">Motion</div>
+                  <div class="helper">Only response, never decoration.</div>
+                </div>
+                <div class="spec-value">Quiet</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="playground">
+          <div>
+            <div class="section-kicker">Playground</div>
+            <h2 class="section-title">Fine control, not visual effect</h2>
+            <p class="section-note">The controls adjust line clarity, surface presence, and section density. These are the variables that actually define a minimal system in practice.</p>
+          </div>
+          <div class="playground-shell">
+            <div class="control-stack">
+              <div class="control">
+                <label for="lineRange">Line Clarity</label>
+                <input id="lineRange" type="range" min="0" max="100" value="50" />
+              </div>
+              <div class="control">
+                <label for="surfaceRange">Surface Presence</label>
+                <input id="surfaceRange" type="range" min="0" max="100" value="34" />
+              </div>
+              <div class="control">
+                <label for="densityRange">Section Density</label>
+                <input id="densityRange" type="range" min="14" max="28" value="20" />
+              </div>
+            </div>
+            <div class="minimal-stage">
+              <div class="stage-top">
+                <span class="note-pill">Minimal</span>
+                <span class="note-pill">Product-book</span>
+                <span class="note-pill">No excess chrome</span>
+              </div>
+              <div class="stage-grid">
+                <article class="stage-panel">
+                  <h3 class="display" style="margin:0 0 12px;">Primary Frame</h3>
+                  <p class="body-copy">The main surface should almost disappear. The page should feel organized by lines and measures, not by heavy panels.</p>
+                  <div class="action-row" style="margin-top:16px;">
+                    <a class="button" href="#">Primary Action</a>
+                    <a class="button-ghost" href="#">Secondary</a>
+                  </div>
+                </article>
+                <article class="stage-panel">
+                  <h3 class="display" style="margin:0 0 12px;">Support Frame</h3>
+                  <p class="body-copy">Secondary content should look almost typographic. Cards are only used when they improve comprehension.</p>
+                </article>
+              </div>
+              <pre class="snippet">Design Style:
+extreme minimal light product system
+warm white canvas
+thin structural lines
+very restrained surface usage
+quiet accent and large spacing
+product-book editorial layout
+
+Use Tailwind + React.
+Do less, but make every line count.</pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="openclaw">
+          <div>
+            <div class="section-kicker">OpenClaw Demo</div>
+            <h2 class="section-title">OpenClaw quiet index</h2>
+            <p class="section-note">The navigation here behaves like a text index instead of a panel system. It is intentionally light, structured, and non-performative.</p>
+          </div>
+          <div class="oc-shell">
+            <div class="oc-grid">
+              <aside class="oc-nav">
+                <div class="oc-nav-head">
+                  <div class="oc-brand display">OpenClaw</div>
+                  <div class="rail-copy" style="margin-top:8px;">Minimal operator shell for longer reading sessions and calmer monitoring work.</div>
+                </div>
+                <div class="chapter-list">
+                  <div class="chapter is-active">
+                    <div class="chapter-no">01</div>
+                    <div>
+                      <div class="chapter-title">Overview</div>
+                      <div class="chapter-note">Main status view, priority queue, and current focus work.</div>
+                    </div>
+                    <div class="chapter-count">4</div>
+                  </div>
+                  <div class="chapter">
+                    <div class="chapter-no">02</div>
+                    <div>
+                      <div class="chapter-title">Runs</div>
+                      <div class="chapter-note">Execution history, automations, and quality checks.</div>
+                    </div>
+                    <div class="chapter-count">9</div>
+                  </div>
+                  <div class="chapter">
+                    <div class="chapter-no">03</div>
+                    <div>
+                      <div class="chapter-title">Queues</div>
+                      <div class="chapter-note">Routing pressure, backlog, and escalation timing.</div>
+                    </div>
+                    <div class="chapter-count">3</div>
+                  </div>
+                  <div class="chapter">
+                    <div class="chapter-no">04</div>
+                    <div>
+                      <div class="chapter-title">Health</div>
+                      <div class="chapter-note">Runtime health, sync recovery, and alert thresholds.</div>
+                    </div>
+                    <div class="chapter-count">2</div>
+                  </div>
+                  <div class="chapter">
+                    <div class="chapter-no">05</div>
+                    <div>
+                      <div class="chapter-title">Memory</div>
+                      <div class="chapter-note">Compaction timing, retrieval quality, and drift.</div>
+                    </div>
+                    <div class="chapter-count">1</div>
+                  </div>
+                </div>
+                <div class="footer-note">
+                  <div class="chapter-status">Shift Note</div>
+                  <div class="rail-copy" style="margin-top:8px;">The queue is stable. A memory pass is due in 21 minutes.</div>
+                </div>
+              </aside>
+              <main class="oc-main">
+                <div class="toolbar">
+                  <div>
+                    <div class="eyebrow">Quiet Product Book</div>
+                    <h3 class="toolbar-title"><span class="accent">OpenClaw</span> minimal frame</h3>
+                  </div>
+                  <div class="toolbar-copy">This shell is designed to feel almost invisible. The navigation is an index, the metrics are simple, and the page relies on structure instead of styling weight.</div>
+                </div>
+                <div class="metric-grid">
+                  <article class="metric-card">
+                    <div class="section-kicker">Agent Success</div>
+                    <div class="metric-value">98.7%</div>
+                    <div class="helper">7-day completion quality.</div>
+                  </article>
+                  <article class="metric-card">
+                    <div class="section-kicker">Median Latency</div>
+                    <div class="metric-value">137ms</div>
+                    <div class="helper">Dispatch to response.</div>
+                  </article>
+                  <article class="metric-card">
+                    <div class="section-kicker">Active Jobs</div>
+                    <div class="metric-value">22</div>
+                    <div class="helper">Across route and archive flows.</div>
+                  </article>
+                  <article class="metric-card">
+                    <div class="section-kicker">Pending Alerts</div>
+                    <div class="metric-value">2</div>
+                    <div class="helper">Both currently assigned.</div>
+                  </article>
+                </div>
+                <div class="detail-grid">
+                  <div class="stack">
+                    <article class="detail-card">
+                      <h3 class="display" style="margin:0 0 12px;">Priority Queue</h3>
+                      <div class="item-row">
+                        <div>
+                          <div class="item-title">Revenue sync mismatch</div>
+                          <div class="item-copy">Payment export mismatch detected after the overnight batch.</div>
+                        </div>
+                        <span class="note-pill">Critical</span>
+                      </div>
+                      <div class="item-row">
+                        <div>
+                          <div class="item-title">Prompt regression review</div>
+                          <div class="item-copy">Executive summary tone drifted after the last reference update.</div>
+                        </div>
+                        <span class="note-pill">Review</span>
+                      </div>
+                    </article>
+                    <article class="detail-card">
+                      <h3 class="display" style="margin:0 0 12px;">Recent Activity</h3>
+                      <div class="item-row">
+                        <div>
+                          <div class="item-title">Digest Compiler</div>
+                          <div class="item-copy">Published morning summary and updated references.</div>
+                        </div>
+                        <span class="note-pill">3m</span>
+                      </div>
+                      <div class="item-row">
+                        <div>
+                          <div class="item-title">Archive Worker</div>
+                          <div class="item-copy">Closed 12 threads and normalized tags.</div>
+                        </div>
+                        <span class="note-pill">11m</span>
+                      </div>
+                    </article>
+                  </div>
+                  <div class="stack">
+                    <article class="detail-card">
+                      <h3 class="display" style="margin:0 0 12px;">System Health</h3>
+                      <div class="status-row">
+                        <div>
+                          <div class="status-name">Task Queue</div>
+                          <div class="status-copy">Stable throughput with no sustained backlog.</div>
+                        </div>
+                        <span class="note-pill">Healthy</span>
+                      </div>
+                      <div class="status-row">
+                        <div>
+                          <div class="status-name">Memory Store</div>
+                          <div class="status-copy">Read and write timings remain within target.</div>
+                        </div>
+                        <span class="note-pill">Stable</span>
+                      </div>
+                    </article>
+                    <article class="detail-card">
+                      <h3 class="display" style="margin:0 0 12px;">Personal Focus</h3>
+                      <div class="focus-row">
+                        <div>
+                          <div class="focus-title">Direction review</div>
+                          <div class="focus-copy">Pick the production baseline after comparing all five systems.</div>
+                        </div>
+                        <span class="note-pill">Now</span>
+                      </div>
+                      <div class="focus-row">
+                        <div>
+                          <div class="focus-title">Shell component split</div>
+                          <div class="focus-copy">Move navigation, KPI, queue, and health into React components.</div>
+                        </div>
+                        <span class="note-pill">Next</span>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="compare">
+          <div>
+            <div class="section-kicker">Fit Notes</div>
+            <h2 class="section-title">When v5 should win</h2>
+            <p class="section-note">Use this system when the product should feel very quiet, very minimal, and very mature. It is best when excess chrome is the problem and restraint is the solution.</p>
+          </div>
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Use Case</th>
+                <th>Why It Fits</th>
+                <th>Watch Out For</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Quiet SaaS Landing</strong></td>
+                <td>Feels calm, intelligent, and premium without trying too hard.</td>
+                <td>Needs strong content and hierarchy or it can feel too plain.</td>
+              </tr>
+              <tr>
+                <td><strong>Minimal Product Dashboard</strong></td>
+                <td>Great when the product should disappear behind the work.</td>
+                <td>Avoid overusing cards or the minimalism collapses.</td>
+              </tr>
+              <tr>
+                <td><strong>Founder Tooling</strong></td>
+                <td>Feels precise and private, more like a book than a dashboard.</td>
+                <td>Not ideal if the brand needs high emotional energy.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="footer-copy">Design Guidelines v5 · Quiet Form System</div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="/apple-backgrounds.js"></script>
+  <script>
+    const root = document.documentElement;
+    const schemeSelect = document.getElementById("schemeSelect");
+    const bgSelect = document.getElementById("bgSelect");
+    const wallMode = document.getElementById("wallMode");
+    const lineRange = document.getElementById("lineRange");
+    const surfaceRange = document.getElementById("surfaceRange");
+    const densityRange = document.getElementById("densityRange");
+
+    const schemes = {
+      stone: { accent: "#5e7288", accent2: "#8a7d6b" },
+      mist: { accent: "#6682a8", accent2: "#8e8da7" },
+      sage: { accent: "#5d7a69", accent2: "#8b7c68" }
+    };
+
+    function updateV5() {
+      const scheme = schemes[schemeSelect.value] || schemes.stone;
+      const wallpaper = window.resolveAppleBackground(bgSelect.value);
+      const line = Number(lineRange.value);
+      const surface = Number(surfaceRange.value);
+      const density = Number(densityRange.value);
+      const lineAlpha = 0.06 + line * 0.0014;
+      const lineStrongAlpha = 0.12 + line * 0.0014;
+      const surfaceAlpha = 0.5 + surface * 0.0032;
+      let background = "linear-gradient(180deg, rgba(248, 247, 243, 1), rgba(239, 238, 233, 1))";
+
+      if (wallMode.value !== "plain" && wallpaper) {
+        const top = wallMode.value === "clear" ? 0.68 : 0.84;
+        const bottom = wallMode.value === "clear" ? 0.78 : 0.9;
+        background = `linear-gradient(180deg, rgba(248, 247, 243, ${top}), rgba(239, 238, 233, ${bottom})), url('${wallpaper}') center center / cover fixed no-repeat`;
+      }
+
+      root.style.setProperty("--accent", scheme.accent);
+      root.style.setProperty("--accent-2", scheme.accent2);
+      root.style.setProperty("--accent-soft", `color-mix(in srgb, ${scheme.accent} 8%, transparent)`);
+      root.style.setProperty("--line", `rgba(34, 39, 46, ${lineAlpha.toFixed(3)})`);
+      root.style.setProperty("--line-strong", `rgba(34, 39, 46, ${lineStrongAlpha.toFixed(3)})`);
+      root.style.setProperty("--paper", `rgba(255, 255, 255, ${surfaceAlpha.toFixed(3)})`);
+      root.style.setProperty("--paper-strong", `rgba(255, 255, 255, ${(surfaceAlpha + 0.12).toFixed(3)})`);
+      root.style.setProperty("--panel-pad", `${density}px`);
+      root.style.setProperty("--bg-image", background);
+
+      document.querySelectorAll(".metric-card, .detail-card, .stage-panel").forEach((panel) => {
+        panel.style.background = `rgba(255, 255, 255, ${(surfaceAlpha + 0.08).toFixed(3)})`;
+      });
+      document.querySelector(".minimal-stage").style.background = `rgba(255, 255, 255, ${(surfaceAlpha + 0.06).toFixed(3)})`;
+    }
+
+    window.populateAppleBackgroundSelect(bgSelect, {
+      defaultValue: "none",
+      includeNone: true,
+      noneLabel: "No Wallpaper"
+    });
+
+    schemeSelect.addEventListener("change", updateV5);
+    bgSelect.addEventListener("change", updateV5);
+    wallMode.addEventListener("change", updateV5);
+    lineRange.addEventListener("input", updateV5);
+    surfaceRange.addEventListener("input", updateV5);
+    densityRange.addEventListener("input", updateV5);
+
+    updateV5();
+  </script>
+</body>
+</html>

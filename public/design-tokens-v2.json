@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "name": "Design Guidelines v2",
+    "version": "2.2.0",
+    "philosophy": "Signal Grid Flat",
+    "description": "A sharper flat design system with technical dossier layout, one accent channel, and near-square geometry."
+  },
+  "typography": {
+    "display": {
+      "family": "Barlow Condensed",
+      "weights": [400, 500, 600],
+      "usage": "Headlines, tabs, KPI values, and shell branding."
+    },
+    "body": {
+      "family": "Roboto",
+      "weights": [400, 500],
+      "usage": "Labels, forms, rows, helper text, and system copy."
+    }
+  },
+  "base": {
+    "canvas": "#F6F4EF",
+    "canvasSoft": "#EEEBE4",
+    "surface": "#FFFDFA",
+    "surfaceAlt": "#F2EEE7",
+    "ink": "#17191D",
+    "inkSoft": "#3F454E",
+    "muted": "#666B72",
+    "line": "#D7D0C5",
+    "lineStrong": "#BFB4A5"
+  },
+  "schemes": {
+    "cobalt": {
+      "accent": "#2952E3",
+      "signal": "#E0562F"
+    },
+    "signal": {
+      "accent": "#D14B2D",
+      "signal": "#2952E3"
+    },
+    "graphite": {
+      "accent": "#232933",
+      "signal": "#4F73D8"
+    }
+  },
+  "backgroundModes": {
+    "paper": "Layered neutral field",
+    "sequoia": "Wallpaper with matte veil",
+    "silver": "Wallpaper with matte veil",
+    "plain": "Pure neutral flat field"
+  },
+  "radius": {
+    "sm": "2px-8px",
+    "md": "4px-10px",
+    "lg": "6px-12px",
+    "xl": "8px-14px"
+  },
+  "motion": {
+    "fast": "120ms",
+    "normal": "180ms",
+    "easing": "cubic-bezier(0.22,1,0.36,1)",
+    "rules": [
+      "fast hover lift",
+      "clear active state",
+      "no blur or glass behavior"
+    ]
+  },
+  "componentRules": {
+    "panel": "Solid surface, explicit border, restrained shadow, hard grouping.",
+    "button": "Single accent channel, flat fill, fast tactile response.",
+    "input": "Clean field, visible border, no ornamental treatment.",
+    "table": "Strong separators and compact rhythm for operational clarity."
+  },
+  "dashboardFit": {
+    "openclaw": "high",
+    "bestFor": [
+      "Internal tools",
+      "operator dashboards",
+      "technical SaaS shells"
+    ],
+    "tradeoff": "Strongest on clarity and implementation simplicity, but less luxurious than v1 or v3."
+  }
+}

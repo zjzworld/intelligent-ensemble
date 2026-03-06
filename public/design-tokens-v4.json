@@ -1,0 +1,89 @@
+{
+  "meta": {
+    "name": "Design Guidelines v4",
+    "version": "4.2.0",
+    "philosophy": "Vector Drift Narrative",
+    "description": "A light, kinetic design system that uses cursor-responsive atmosphere, scene-led hero composition, and narrative section flow instead of bento repetition."
+  },
+  "typography": {
+    "display": {
+      "family": "Outfit",
+      "weights": [400, 500, 600, 700],
+      "usage": "Hero headlines, scene titles, section titles, and product-brand moments."
+    },
+    "body": {
+      "family": "Manrope",
+      "weights": [400, 500, 600],
+      "usage": "Body copy, controls, narrative notes, and product detail."
+    }
+  },
+  "base": {
+    "canvas": "#EEF4FC",
+    "canvasSoft": "#E7EDF8",
+    "surface": "rgba(255,255,255,0.52)",
+    "surfaceStrong": "rgba(255,255,255,0.78)",
+    "surfaceSolid": "rgba(248,250,255,0.94)",
+    "ink": "#101927",
+    "inkSoft": "#33445D",
+    "muted": "#617288",
+    "line": "rgba(16,25,39,0.10)",
+    "lineStrong": "rgba(16,25,39,0.18)"
+  },
+  "schemes": {
+    "cobaltHalo": {
+      "accent": "#3665F3",
+      "accentSecondary": "#8F88FF",
+      "accentTertiary": "#79D6D4"
+    },
+    "irisShift": {
+      "accent": "#5966FF",
+      "accentSecondary": "#BE82FF",
+      "accentTertiary": "#8ED3FF"
+    },
+    "glacierSignal": {
+      "accent": "#3471D8",
+      "accentSecondary": "#78B0FF",
+      "accentTertiary": "#80D4C8"
+    }
+  },
+  "scenes": {
+    "waveMesh": {
+      "texture": "./assets/v4-wave-texture.jpg",
+      "description": "Soft wave mesh texture sourced online and layered under halo gradients."
+    },
+    "haloField": {
+      "texture": "none",
+      "description": "Clean gradient field without mesh, using only light halos."
+    },
+    "horizonWash": {
+      "texture": "./assets/v4-wave-texture.jpg",
+      "description": "Lighter horizon-style wash with softer mesh visibility."
+    }
+  },
+  "motion": {
+    "fast": "140ms",
+    "normal": "240ms",
+    "easing": "cubic-bezier(0.22,1,0.36,1)",
+    "rules": [
+      "move background light and depth layers with the cursor",
+      "never destabilize body copy or controls",
+      "prefer ambient drift over explicit animation"
+    ]
+  },
+  "layoutRules": [
+    "Lead with one dominant scene instead of multiple equal cards.",
+    "Use alternating story sections to guide the eye down the page.",
+    "Reserve strong containment for proof surfaces and product shells only.",
+    "Treat navigation in the product demo as a ribbon, not a sidebar stack."
+  ],
+  "dashboardFit": {
+    "openclaw": "medium-high",
+    "bestFor": [
+      "AI product landing pages",
+      "premium feature launches",
+      "story-led product demos",
+      "brand-forward command surfaces"
+    ],
+    "tradeoff": "More atmospheric and memorable than flat systems, but less suitable for highly repetitive admin screens or table-heavy tools."
+  }
+}

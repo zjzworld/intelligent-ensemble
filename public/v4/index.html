@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design Guidelines v4 · Vector Drift Narrative</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eef4fc;
+      --bg-soft: #e7edf8;
+      --surface: rgba(255, 255, 255, 0.52);
+      --surface-strong: rgba(255, 255, 255, 0.78);
+      --surface-solid: rgba(248, 250, 255, 0.94);
+      --ink: #101927;
+      --ink-soft: #33445d;
+      --muted: #617288;
+      --line: rgba(16, 25, 39, 0.1);
+      --line-strong: rgba(16, 25, 39, 0.18);
+      --accent: #3665f3;
+      --accent-2: #8f88ff;
+      --accent-3: #79d6d4;
+      --glow-a: rgba(54, 101, 243, 0.28);
+      --glow-b: rgba(143, 136, 255, 0.18);
+      --glow-c: rgba(121, 214, 212, 0.16);
+      --spot-rgb: 95, 135, 255;
+      --mesh-opacity: 0.16;
+      --drift-scale: 1;
+      --px: 50%;
+      --py: 34%;
+      --fx-sm: 0px;
+      --fy-sm: 0px;
+      --fx-md: 0px;
+      --fy-md: 0px;
+      --fx-lg: 0px;
+      --fy-lg: 0px;
+      --rx: 0deg;
+      --ry: 0deg;
+      --shadow: 0 24px 72px rgba(41, 57, 92, 0.12);
+      --shadow-soft: 0 16px 36px rgba(41, 57, 92, 0.08);
+      --radius-sm: 14px;
+      --radius-md: 22px;
+      --radius-lg: 32px;
+      --radius-xl: 40px;
+      --motion-fast: 140ms;
+      --motion-normal: 240ms;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Manrope", sans-serif;
+      font-weight: 400;
+      color: var(--ink);
+      background: linear-gradient(180deg, var(--bg), var(--bg-soft));
+      overflow-x: hidden;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .scene {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 0;
+    }
+
+    .scene::before,
+    .scene::after,
+    .scene-mesh,
+    .scene-grid {
+      content: "";
+      position: absolute;
+      inset: -6%;
+    }
+
+    .scene::before {
+      background:
+        radial-gradient(980px 640px at var(--px) calc(var(--py) - 10%), var(--glow-a), transparent 58%),
+        radial-gradient(760px 520px at calc(var(--px) + 18%) calc(var(--py) + 12%), var(--glow-b), transparent 60%),
+        radial-gradient(780px 560px at 14% 88%, var(--glow-c), transparent 64%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(238, 244, 252, 0.9) 30%, rgba(231, 237, 248, 0.96) 100%);
+      transform: translate3d(var(--fx-sm), var(--fy-sm), 0) scale(calc(1 + (var(--drift-scale) * 0.03)));
+      filter: saturate(1.02);
+    }
+
+    .scene::after {
+      background:
+        radial-gradient(420px 420px at var(--px) var(--py), rgba(var(--spot-rgb), 0.18), transparent 58%),
+        radial-gradient(720px 360px at 82% 10%, rgba(255, 255, 255, 0.36), transparent 68%);
+      filter: blur(18px);
+      opacity: 0.92;
+      transform: translate3d(var(--fx-md), var(--fy-md), 0);
+    }
+
+    .scene-mesh {
+      background: url("/assets/v4-wave-texture.jpg") center center / cover no-repeat;
+      opacity: var(--mesh-opacity);
+      mix-blend-mode: screen;
+      filter: grayscale(1) brightness(1.08) contrast(0.84);
+      transform: translate3d(var(--fx-lg), var(--fy-lg), 0) scale(calc(1.04 + (var(--drift-scale) * 0.02)));
+      mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.92), transparent 94%);
+    }
+
+    .scene-grid {
+      background-image:
+        linear-gradient(rgba(16, 25, 39, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(16, 25, 39, 0.035) 1px, transparent 1px);
+      background-size: 72px 72px;
+      opacity: 0.28;
+      transform: translate3d(calc(var(--fx-sm) * -0.4), calc(var(--fy-sm) * -0.4), 0);
+      mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.72), transparent 88%);
+    }
+
+    .display {
+      font-family: "Outfit", sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.04em;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(1240px, 92vw);
+      margin: 0 auto;
+      padding: 18px 0 88px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      padding: 18px 0 14px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(16, 25, 39, 0.08);
+      backdrop-filter: blur(12px);
+      background: linear-gradient(180deg, rgba(238, 244, 252, 0.84), rgba(238, 244, 252, 0.58));
+    }
+
+    .brand-block {
+      display: grid;
+      gap: 3px;
+    }
+
+    .brand-kicker {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .brand {
+      font-size: 22px;
+      line-height: 0.95;
+      color: var(--ink);
+      margin: 0;
+    }
+
+    .topbar-right,
+    .nav,
+    .nav-links,
+    .hero-actions,
+    .pill-row,
+    .prompt-tags,
+    .visual-footer,
+    .mini-actions,
+    .ribbon-nav,
+    .fit-tags {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .topbar-right {
+      flex: 1;
+      justify-content: flex-end;
+      min-width: 0;
+    }
+
+    .nav-links a,
+    .control-select,
+    .button,
+    .button-subtle,
+    .pill,
+    .prompt-chip,
+    .ribbon-item,
+    .fit-tag {
+      text-decoration: none;
+      color: var(--ink-soft);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(16, 25, 39, 0.08);
+      background: rgba(255, 255, 255, 0.48);
+      backdrop-filter: blur(12px);
+      transition:
+        transform var(--motion-fast) var(--ease),
+        border-color var(--motion-fast) var(--ease),
+        background var(--motion-fast) var(--ease),
+        box-shadow var(--motion-fast) var(--ease);
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .control-select {
+      min-width: 148px;
+      appearance: none;
+      outline: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.48));
+      background-position:
+        calc(100% - 18px) calc(50% - 2px),
+        calc(100% - 12px) calc(50% - 2px),
+        0 0;
+      background-size: 6px 6px, 6px 6px, 100% 100%;
+      background-repeat: no-repeat;
+      padding-right: 32px;
+    }
+
+    .button,
+    .button-subtle {
+      min-height: 46px;
+      border-radius: 18px;
+      letter-spacing: 0.04em;
+      padding: 0 18px;
+    }
+
+    .button {
+      color: #f8fbff;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 86%, white), color-mix(in srgb, var(--accent) 72%, #243557));
+      border-color: transparent;
+      box-shadow: 0 18px 38px color-mix(in srgb, var(--accent) 24%, transparent);
+    }
+
+    .button-subtle {
+      color: var(--ink-soft);
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .nav-links a:hover,
+    .control-select:hover,
+    .button:hover,
+    .button-subtle:hover,
+    .pill:hover,
+    .ribbon-item:hover,
+    .fit-tag:hover {
+      transform: translateY(-1px);
+      border-color: rgba(16, 25, 39, 0.16);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 44px;
+      align-items: center;
+      min-height: calc(100vh - 110px);
+      padding: 28px 0 34px;
+    }
+
+    .hero-copy {
+      max-width: 520px;
+    }
+
+    .eyebrow,
+    .section-kicker,
+    .label,
+    .metric-label,
+    .note-kicker,
+    .fit-kicker {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .hero-title,
+    .section-title,
+    .story-title,
+    .visual-title,
+    .oc-title,
+    .stage-title,
+    .fit-title {
+      margin: 0;
+      font-family: "Outfit", sans-serif;
+      font-weight: 600;
+      letter-spacing: -0.05em;
+      color: var(--ink);
+    }
+
+    .hero-title {
+      font-size: clamp(50px, 7.8vw, 98px);
+      line-height: 0.9;
+      margin-top: 14px;
+      text-wrap: balance;
+    }
+
+    .accent {
+      color: var(--accent);
+    }
+
+    .hero-copy p,
+    .section-note,
+    .story-copy p,
+    .visual-copy,
+    .oc-copy,
+    .side-note p,
+    .fit-copy,
+    .fit-list li,
+    .rail-copy,
+    .metric-copy,
+    .window-copy,
+    .timeline-copy {
+      font-size: 15px;
+      line-height: 1.85;
+      color: var(--muted);
+    }
+
+    .hero-actions {
+      margin-top: 28px;
+    }
+
+    .hero-points {
+      margin: 28px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0;
+      border-top: 1px solid rgba(16, 25, 39, 0.08);
+    }
+
+    .hero-points li {
+      display: grid;
+      grid-template-columns: 132px minmax(0, 1fr);
+      gap: 18px;
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(16, 25, 39, 0.08);
+    }
+
+    .hero-visual {
+      position: relative;
+      min-height: 620px;
+      perspective: 1400px;
+    }
+
+    .orbit-lines {
+      position: absolute;
+      inset: 16px 0 0 0;
+      opacity: 0.8;
+      transform: translate3d(var(--fx-sm), var(--fy-sm), 0);
+    }
+
+    .orbit-lines svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .hero-window,
+    .hero-note,
+    .hero-ribbon,
+    .story-visual,
+    .control-rail,
+    .playground-stage,
+    .oc-shell,
+    .fit-shell,
+    .trace-strip {
+      border: 1px solid rgba(16, 25, 39, 0.08);
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-window {
+      position: absolute;
+      right: 0;
+      top: 68px;
+      width: min(640px, 100%);
+      min-height: 454px;
+      border-radius: var(--radius-xl);
+      padding: 22px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(246, 249, 255, 0.7)),
+        radial-gradient(520px 280px at 0% 100%, color-mix(in srgb, var(--accent-3) 16%, transparent), transparent 70%),
+        radial-gradient(520px 280px at 100% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%);
+      transform:
+        translate3d(var(--fx-sm), var(--fy-sm), 0)
+        rotateX(var(--rx))
+        rotateY(var(--ry));
+      transform-style: preserve-3d;
+    }
+
+    .window-bar,
+    .stage-bar,
+    .oc-bar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .window-dots,
+    .stage-dots,
+    .oc-dots {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .window-dots span,
+    .stage-dots span,
+    .oc-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(16, 25, 39, 0.14);
+    }
+
+    .window-label,
+    .stage-label,
+    .oc-label {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .prompt-card {
+      border-radius: 26px;
+      padding: 24px;
+      background: linear-gradient(180deg, rgba(247, 250, 255, 0.96), rgba(239, 245, 255, 0.9));
+      border: 1px solid rgba(16, 25, 39, 0.08);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
+
+    .prompt-bubble {
+      display: inline-flex;
+      align-items: center;
+      min-height: 42px;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid rgba(16, 25, 39, 0.06);
+      color: var(--ink);
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+
+    .prompt-title {
+      font-family: "Outfit", sans-serif;
+      font-weight: 600;
+      font-size: 44px;
+      line-height: 0.92;
+      letter-spacing: -0.05em;
+      margin: 0 0 12px;
+      color: var(--ink);
+      max-width: 12ch;
+    }
+
+    .prompt-tags {
+      margin: 20px 0 0;
+    }
+
+    .prompt-chip {
+      min-height: 34px;
+      padding: 0 12px;
+      background: rgba(255, 255, 255, 0.68);
+    }
+
+    .metrics-ribbon {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .metric-card {
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid rgba(16, 25, 39, 0.06);
+    }
+
+    .metric-value {
+      margin-top: 10px;
+      font-family: "Outfit", sans-serif;
+      font-size: 34px;
+      line-height: 0.9;
+      letter-spacing: -0.05em;
+      color: var(--ink);
+    }
+
+    .hero-note {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: min(310px, 54%);
+      border-radius: 28px;
+      padding: 18px 18px 20px;
+      background: rgba(255, 255, 255, 0.58);
+      transform: translate3d(calc(var(--fx-md) * -1), calc(var(--fy-md) * -1), 0);
+    }
+
+    .hero-note h3,
+    .story-copy h3,
+    .visual-title,
+    .control-rail h3,
+    .oc-side h3,
+    .fit-title {
+      margin: 10px 0 10px;
+      font-family: "Outfit", sans-serif;
+      font-size: 28px;
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+    }
+
+    .hero-ribbon {
+      position: absolute;
+      left: 34px;
+      right: 26px;
+      bottom: 22px;
+      border-radius: 24px;
+      padding: 16px 18px;
+      background: rgba(255, 255, 255, 0.5);
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr 0.8fr;
+      gap: 16px;
+      transform: translate3d(var(--fx-lg), var(--fy-lg), 0);
+    }
+
+    .trace-strip {
+      margin-top: 6px;
+      border-radius: 28px;
+      padding: 16px 18px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      background: rgba(255, 255, 255, 0.44);
+    }
+
+    .trace-item {
+      position: relative;
+      padding-left: 22px;
+    }
+
+    .trace-item::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+
+    .section {
+      padding-top: 98px;
+      scroll-margin-top: 96px;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 0.82fr 1.18fr;
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 30px;
+    }
+
+    .section-title {
+      font-size: clamp(42px, 5vw, 70px);
+      line-height: 0.92;
+      text-wrap: balance;
+    }
+
+    .story-flow {
+      position: relative;
+      display: grid;
+    }
+
+    .story-flow::before {
+      content: "";
+      position: absolute;
+      left: 34px;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: linear-gradient(180deg, rgba(16, 25, 39, 0.1), rgba(16, 25, 39, 0.03));
+    }
+
+    .story-row {
+      display: grid;
+      grid-template-columns: 68px minmax(0, 0.78fr) minmax(0, 1.22fr);
+      gap: 26px;
+      align-items: center;
+      padding: 34px 0;
+      border-top: 1px solid rgba(16, 25, 39, 0.08);
+    }
+
+    .story-row:first-child {
+      border-top: 0;
+    }
+
+    .story-row.is-reverse {
+      grid-template-columns: 68px minmax(0, 1.08fr) minmax(0, 0.92fr);
+    }
+
+    .story-row.is-reverse .story-copy {
+      order: 2;
+    }
+
+    .story-row.is-reverse .story-visual {
+      order: 1;
+    }
+
+    .story-index {
+      position: relative;
+      z-index: 1;
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(16, 25, 39, 0.08);
+      box-shadow: var(--shadow-soft);
+      font-family: "Outfit", sans-serif;
+      font-size: 28px;
+      line-height: 0.9;
+      letter-spacing: -0.05em;
+      color: var(--accent);
+    }
+
+    .story-copy {
+      max-width: 430px;
+    }
+
+    .story-title {
+      font-size: 42px;
+      line-height: 0.92;
+      text-wrap: balance;
+    }
+
+    .story-visual {
+      position: relative;
+      overflow: hidden;
+      min-height: 320px;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(246, 249, 255, 0.56)),
+        radial-gradient(440px 220px at 100% 0%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 70%),
+        radial-gradient(360px 200px at 0% 100%, color-mix(in srgb, var(--accent-3) 16%, transparent), transparent 72%);
+    }
+
+    .story-visual::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 24%);
+    }
+
+    .flow-surface,
+    .review-surface,
+    .depth-surface {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+    }
+
+    .flow-surface svg,
+    .depth-surface svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .flow-note,
+    .review-note,
+    .depth-note {
+      position: absolute;
+      z-index: 2;
+      max-width: 220px;
+      padding: 14px 16px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(16, 25, 39, 0.08);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .flow-note.top {
+      top: 22px;
+      right: 22px;
+    }
+
+    .flow-note.bottom {
+      left: 26px;
+      bottom: 24px;
+    }
+
+    .review-layout {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .review-shell,
+    .review-rail,
+    .depth-window,
+    .depth-sheet {
+      border-radius: 24px;
+      border: 1px solid rgba(16, 25, 39, 0.08);
+      background: rgba(255, 255, 255, 0.62);
+      padding: 18px;
+    }
+
+    .review-rail {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .review-item,
+    .timeline-item,
+    .rail-item,
+    .shell-item,
+    .mini-card {
+      padding: 14px 0;
+      border-top: 1px solid rgba(16, 25, 39, 0.08);
+    }
+
+    .review-item:first-child,
+    .timeline-item:first-child,
+    .rail-item:first-child,
+    .shell-item:first-child,
+    .mini-card:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .depth-layout {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .playground-grid {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .control-rail {
+      position: sticky;
+      top: 92px;
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      background: rgba(255, 255, 255, 0.48);
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .control-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control-group label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .control-group input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .playground-stage {
+      position: relative;
+      overflow: hidden;
+      border-radius: 38px;
+      padding: 26px;
+      min-height: 620px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(245, 248, 255, 0.48)),
+        radial-gradient(520px 260px at 0% 100%, color-mix(in srgb, var(--accent-3) 18%, transparent), transparent 72%),
+        radial-gradient(540px 280px at 100% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%);
+    }
+
+    .playground-stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(360px 360px at var(--px) var(--py), rgba(var(--spot-rgb), 0.16), transparent 58%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent 24%);
+      filter: blur(8px);
+    }
+
+    .stage-shell {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 18px;
+      min-height: 100%;
+    }
+
+    .stage-canvas {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 18px;
+      align-items: stretch;
+      flex: 1;
+    }
+
+    .stage-window,
+    .stage-side {
+      border-radius: 28px;
+      border: 1px solid rgba(16, 25, 39, 0.08);
+      background: rgba(255, 255, 255, 0.62);
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .stage-window {
+      display: grid;
+      gap: 18px;
+      transform: translate3d(var(--fx-sm), var(--fy-sm), 0) rotateX(var(--rx)) rotateY(var(--ry));
+    }
+
+    .stage-headline {
+      font-family: "Outfit", sans-serif;
+      font-weight: 600;
+      font-size: 54px;
+      line-height: 0.9;
+      letter-spacing: -0.05em;
+      margin: 0;
+      max-width: 9ch;
+    }
+
+    .stage-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .mini-card {
+      padding-top: 0;
+    }
+
+    .mini-value {
+      margin-top: 8px;
+      font-family: "Outfit", sans-serif;
+      font-size: 28px;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+    }
+
+    .stage-side {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+      transform: translate3d(calc(var(--fx-md) * -1), calc(var(--fy-md) * -1), 0);
+    }
+
+    .rail-item .pill-row {
+      margin-top: 12px;
+    }
+
+    .oc-shell {
+      overflow: hidden;
+      border-radius: 40px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(244, 248, 255, 0.58)),
+        radial-gradient(520px 260px at 100% 0%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 72%),
+        radial-gradient(520px 260px at 0% 100%, color-mix(in srgb, var(--accent-3) 14%, transparent), transparent 74%);
+    }
+
+    .oc-header {
+      display: grid;
+      grid-template-columns: 0.92fr 1.08fr;
+      gap: 22px;
+      padding: 24px 26px 20px;
+      border-bottom: 1px solid rgba(16, 25, 39, 0.08);
+    }
+
+    .oc-title {
+      font-size: clamp(42px, 5vw, 76px);
+      line-height: 0.92;
+      text-wrap: balance;
+    }
+
+    .oc-body {
+      display: grid;
+      grid-template-columns: 1.12fr 0.88fr;
+    }
+
+    .oc-main,
+    .oc-side {
+      padding: 28px 26px 30px;
+    }
+
+    .oc-main {
+      border-right: 1px solid rgba(16, 25, 39, 0.08);
+      display: grid;
+      gap: 24px;
+    }
+
+    .oc-summary {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .summary-card,
+    .timeline-shell,
+    .side-note,
+    .directive-sheet {
+      border-radius: 28px;
+      border: 1px solid rgba(16, 25, 39, 0.08);
+      background: rgba(255, 255, 255, 0.56);
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .directive-sheet {
+      display: grid;
+      gap: 14px;
+    }
+
+    .timeline-shell {
+      position: relative;
+      display: grid;
+      gap: 0;
+    }
+
+    .timeline-shell::before {
+      content: "";
+      position: absolute;
+      left: 16px;
+      top: 26px;
+      bottom: 26px;
+      width: 1px;
+      background: rgba(16, 25, 39, 0.1);
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-left: 48px;
+    }
+
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: 10px;
+      top: 18px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 10%, transparent);
+    }
+
+    .side-note {
+      display: grid;
+      gap: 8px;
+    }
+
+    .fit-shell {
+      border-radius: 34px;
+      padding: 26px;
+      background: rgba(255, 255, 255, 0.46);
+    }
+
+    .fit-grid {
+      display: grid;
+      grid-template-columns: 0.92fr 1.08fr;
+      gap: 26px;
+    }
+
+    .fit-list {
+      margin: 0;
+      padding-left: 20px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .footer {
+      margin-top: 26px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1140px) {
+      .hero,
+      .section-head,
+      .playground-grid,
+      .fit-grid,
+      .oc-header,
+      .oc-body,
+      .oc-summary,
+      .stage-canvas,
+      .story-row,
+      .story-row.is-reverse {
+        grid-template-columns: 1fr;
+      }
+
+      .story-row.is-reverse .story-copy,
+      .story-row.is-reverse .story-visual {
+        order: initial;
+      }
+
+      .story-flow::before {
+        display: none;
+      }
+
+      .story-index {
+        width: 54px;
+        height: 54px;
+        font-size: 24px;
+      }
+
+      .hero-visual {
+        min-height: 700px;
+      }
+
+      .hero-note {
+        width: min(340px, 64%);
+      }
+
+      .hero-ribbon,
+      .trace-strip,
+      .metrics-ribbon,
+      .stage-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .control-rail {
+        position: static;
+      }
+
+      .oc-main {
+        border-right: 0;
+        border-bottom: 1px solid rgba(16, 25, 39, 0.08);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100%, 100vw);
+        padding: 16px 14px 52px;
+      }
+
+      .topbar {
+        position: static;
+        padding-top: 6px;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 10px;
+      }
+
+      .hero-title,
+      .section-title,
+      .oc-title,
+      .stage-headline {
+        font-size: 42px;
+      }
+
+      .hero-window {
+        position: relative;
+        top: auto;
+        width: 100%;
+      }
+
+      .hero-note,
+      .hero-ribbon {
+        position: relative;
+        left: auto;
+        right: auto;
+        top: auto;
+        bottom: auto;
+        width: 100%;
+        margin-top: 16px;
+      }
+
+      .hero-visual {
+        min-height: auto;
+        display: grid;
+        gap: 16px;
+      }
+
+      .orbit-lines {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation: none !important;
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="scene" aria-hidden="true">
+    <div class="scene-mesh"></div>
+    <div class="scene-grid"></div>
+  </div>
+
+  <div class="page">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-kicker">Design Guidelines v4</div>
+        <h1 class="brand display">Vector Drift Narrative</h1>
+      </div>
+      <div class="topbar-right">
+        <nav class="nav-links">
+          <a href="#overview">Overview</a>
+          <a href="#principles">Flow</a>
+          <a href="#playground">Playground</a>
+          <a href="#openclaw">OpenClaw</a>
+          <a href="/v1/">v1</a>
+          <a href="/v2/">v2</a>
+          <a href="/v3/">v3</a>
+          <a href="/v5/">v5</a>
+        </nav>
+        <select id="schemeSelect" class="control-select" aria-label="Color scheme">
+          <option value="cobalt">Cobalt</option>
+          <option value="iris">Iris</option>
+          <option value="glacier">Glacier</option>
+        </select>
+        <select id="sceneSelect" class="control-select" aria-label="Scene treatment">
+          <option value="wave">Mesh</option>
+          <option value="halo">Halo</option>
+          <option value="horizon">Horizon</option>
+        </select>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="overview">
+        <div class="hero-copy">
+          <div class="eyebrow">Codex-inspired page flow</div>
+          <h2 class="hero-title"><span class="accent">A kinetic light system</span> built for product stories, not card walls.</h2>
+          <p>This version is intentionally closer to the motion and visual pacing of the Codex homepage: one dominant scene, a moving light field, and a page structure that guides the eye through product proof instead of dropping everything into equal modules.</p>
+          <div class="hero-actions">
+            <a class="button" href="#openclaw">View OpenClaw Reframe</a>
+            <a class="button-subtle" href="#playground">Tune The Background</a>
+          </div>
+          <ul class="hero-points">
+            <li>
+              <span class="label">Narrative</span>
+              <span>The page leads with a product statement, then alternates between explanation and visual proof like a landing page, not a dashboard gallery.</span>
+            </li>
+            <li>
+              <span class="label">Motion</span>
+              <span>The background responds to cursor position with layered drift instead of flashy effects. It should feel ambient, not reactive for its own sake.</span>
+            </li>
+            <li>
+              <span class="label">Surface use</span>
+              <span>Surfaces appear only where the content needs containment. The rest of the page stays open so the eye can move through the story.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="hero-visual">
+          <div class="orbit-lines" aria-hidden="true">
+            <svg viewBox="0 0 780 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M58 450C120 350 210 300 332 282C432 268 555 220 722 60" stroke="url(#orb1)" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M50 520C180 520 280 484 356 430C430 378 516 318 730 280" stroke="url(#orb2)" stroke-width="1.2" stroke-linecap="round" opacity="0.72" />
+              <path d="M120 612C248 570 332 528 410 460C490 392 576 388 742 420" stroke="url(#orb3)" stroke-width="1.2" stroke-linecap="round" opacity="0.58" />
+              <defs>
+                <linearGradient id="orb1" x1="58" y1="450" x2="722" y2="60" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="rgba(54,101,243,0)" />
+                  <stop offset="0.42" stop-color="rgba(54,101,243,0.46)" />
+                  <stop offset="1" stop-color="rgba(121,214,212,0.0)" />
+                </linearGradient>
+                <linearGradient id="orb2" x1="50" y1="520" x2="730" y2="280" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="rgba(143,136,255,0)" />
+                  <stop offset="0.5" stop-color="rgba(143,136,255,0.38)" />
+                  <stop offset="1" stop-color="rgba(54,101,243,0)" />
+                </linearGradient>
+                <linearGradient id="orb3" x1="120" y1="612" x2="742" y2="420" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="rgba(121,214,212,0)" />
+                  <stop offset="0.52" stop-color="rgba(121,214,212,0.42)" />
+                  <stop offset="1" stop-color="rgba(143,136,255,0)" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+
+          <aside class="hero-note">
+            <div class="note-kicker">What changed</div>
+            <h3>More product page, less dashboard mosaic.</h3>
+            <p>The layout now uses one main visual scene, lighter section separators, and longer reading rhythm. That is what was missing from the earlier v4.</p>
+          </aside>
+
+          <div class="hero-window">
+            <div class="window-bar">
+              <div class="window-dots"><span></span><span></span><span></span></div>
+              <div class="window-label">Directive Surface</div>
+            </div>
+            <div class="prompt-card">
+              <div class="prompt-bubble">Reframe OpenClaw into a calmer command surface with narrative flow.</div>
+              <h3 class="prompt-title">Guide the page like a product, not a control panel.</h3>
+              <p class="window-copy">I reorganized the shell around a dominant scene, alternating feature rows, and a more deliberate reading order. Surfaces are now strategic, the background holds depth, and motion stays in the atmosphere instead of the content.</p>
+              <div class="prompt-tags">
+                <span class="prompt-chip">Scene-led hero</span>
+                <span class="prompt-chip">Cursor light field</span>
+                <span class="prompt-chip">Narrative sections</span>
+              </div>
+              <div class="metrics-ribbon">
+                <div class="metric-card">
+                  <div class="metric-label">Brand presence</div>
+                  <div class="metric-value">9.3</div>
+                  <div class="metric-copy">More memorable than flat, but still calm.</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-label">Readability</div>
+                  <div class="metric-value">8.8</div>
+                  <div class="metric-copy">Works because the copy is not trapped in cards.</div>
+                </div>
+                <div class="metric-card">
+                  <div class="metric-label">Motion fit</div>
+                  <div class="metric-value">8.9</div>
+                  <div class="metric-copy">Ambient drift instead of obvious animation.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-ribbon">
+            <div>
+              <div class="label">Scene</div>
+              <div class="visual-title">Wave mesh with halo drift</div>
+              <div class="visual-copy">A web-found texture sits behind soft gradients so the background has texture without becoming illustration-heavy.</div>
+            </div>
+            <div>
+              <div class="label">Motion logic</div>
+              <div class="visual-copy">The cursor only moves background light and layered depth. It does not shake text or break layout stability.</div>
+            </div>
+            <div>
+              <div class="label">Best use</div>
+              <div class="visual-copy">Product landing pages, AI tool stories, premium feature pages, founder demos.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="trace-strip" aria-label="Principles summary">
+        <div class="trace-item">
+          <div class="label">01 Narrative first</div>
+          <div class="visual-copy">Use wide sections and directional reading order instead of equal cards.</div>
+        </div>
+        <div class="trace-item">
+          <div class="label">02 Motion in the background</div>
+          <div class="visual-copy">Let atmosphere move. Keep content surfaces readable and quiet.</div>
+        </div>
+        <div class="trace-item">
+          <div class="label">03 Strategic containment</div>
+          <div class="visual-copy">Only contain content when structure would collapse without it.</div>
+        </div>
+      </section>
+
+      <section class="section" id="principles">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Page Flow</div>
+            <h2 class="section-title">Three moves that make this feel more like a real product page.</h2>
+          </div>
+          <p class="section-note">The reference point here is the movement and pacing of the Codex homepage, not a literal copy. The same principle is applied to a new light palette and a more editorial page rhythm.</p>
+        </div>
+
+        <div class="story-flow">
+          <article class="story-row">
+            <div class="story-index">01</div>
+            <div class="story-copy">
+              <div class="section-kicker">Directional hierarchy</div>
+              <h3 class="story-title">Lead with one dominant visual field.</h3>
+              <p>The hero should behave like a scene. A large statement, one product surface, and one ambient light field create a clear entry point. That is stronger than dropping several equal cards above the fold.</p>
+            </div>
+            <figure class="story-visual">
+              <div class="flow-surface">
+                <svg viewBox="0 0 720 320" xmlns="http://www.w3.org/2000/svg" fill="none">
+                  <defs>
+                    <linearGradient id="flowLine" x1="64" y1="248" x2="654" y2="78" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="var(--accent)" stop-opacity="0.1" />
+                      <stop offset="0.48" stop-color="var(--accent)" stop-opacity="0.74" />
+                      <stop offset="1" stop-color="var(--accent-3)" stop-opacity="0.18" />
+                    </linearGradient>
+                  </defs>
+                  <rect x="18" y="22" width="684" height="276" rx="30" stroke="rgba(16,25,39,0.08)" fill="rgba(255,255,255,0.28)" />
+                  <path d="M74 250C148 236 210 214 280 180C364 138 458 120 644 80" stroke="url(#flowLine)" stroke-width="4" stroke-linecap="round" />
+                  <circle cx="74" cy="250" r="10" fill="var(--accent)" fill-opacity="0.74" />
+                  <circle cx="310" cy="168" r="10" fill="var(--accent-2)" fill-opacity="0.74" />
+                  <circle cx="644" cy="80" r="10" fill="var(--accent-3)" fill-opacity="0.74" />
+                </svg>
+                <div class="flow-note top">
+                  <div class="label">Hero bias</div>
+                  <div class="visual-copy">One large scene makes the first screen readable in a second.</div>
+                </div>
+                <div class="flow-note bottom">
+                  <div class="label">Visual path</div>
+                  <div class="visual-copy">The line guides the eye from headline to proof instead of trapping it in grid cells.</div>
+                </div>
+              </div>
+            </figure>
+          </article>
+
+          <article class="story-row is-reverse">
+            <div class="story-index">02</div>
+            <div class="story-copy">
+              <div class="section-kicker">Ambient motion</div>
+              <h3 class="story-title">Move the atmosphere, not the reading surface.</h3>
+              <p>The cursor shifts light, mesh, and depth layers behind the content. This creates a premium sense of motion without making panels feel unstable or decorative.</p>
+            </div>
+            <figure class="story-visual">
+              <div class="depth-layout">
+                <div class="depth-window">
+                  <div class="window-bar">
+                    <div class="window-dots"><span></span><span></span><span></span></div>
+                    <div class="window-label">Background stage</div>
+                  </div>
+                  <div class="visual-title">Pointer-aware depth</div>
+                  <p class="visual-copy">Halo, mesh, and beam layers drift with different strengths, so the page feels spatial instead of merely animated.</p>
+                  <div class="pill-row">
+                    <span class="pill">Cursor halo</span>
+                    <span class="pill">Layer drift</span>
+                    <span class="pill">No content shake</span>
+                  </div>
+                </div>
+                <div class="depth-sheet">
+                  <div class="label">Motion rule</div>
+                  <div class="rail-copy">Never move body copy or control targets enough to disrupt reading or interaction.</div>
+                </div>
+              </div>
+            </figure>
+          </article>
+
+          <article class="story-row">
+            <div class="story-index">03</div>
+            <div class="story-copy">
+              <div class="section-kicker">Containment discipline</div>
+              <h3 class="story-title">Keep panels rare enough that they still mean something.</h3>
+              <p>Cards are no longer the whole page language. Large figures, slender rails, and quiet separators do most of the work. Panels appear only when detail actually needs containment.</p>
+            </div>
+            <figure class="story-visual">
+              <div class="review-layout">
+                <div class="review-shell">
+                  <div class="window-bar">
+                    <div class="window-dots"><span></span><span></span><span></span></div>
+                    <div class="window-label">Review shell</div>
+                  </div>
+                  <div class="visual-title">One proof surface</div>
+                  <div class="review-item">
+                    <div class="label">Content focus</div>
+                    <div class="visual-copy">A single large surface can prove the interaction model faster than four unrelated cards.</div>
+                  </div>
+                  <div class="review-item">
+                    <div class="label">Reading order</div>
+                    <div class="visual-copy">Headline, annotation, proof, then detail. That order is the page's main job.</div>
+                  </div>
+                </div>
+                <div class="review-rail">
+                  <div class="review-note">
+                    <div class="label">Design move</div>
+                    <div class="visual-copy">Swap mosaic repetition for one anchored visual and one explanatory rail.</div>
+                  </div>
+                </div>
+              </div>
+            </figure>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="playground">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Liquid-free Playground</div>
+            <h2 class="section-title">Tune the motion field and surface density.</h2>
+          </div>
+          <p class="section-note">This is where the design becomes testable. The controls adjust halo size, mesh visibility, and drift intensity so you can decide whether the atmosphere is premium enough or too performative.</p>
+        </div>
+
+        <div class="playground-grid">
+          <aside class="control-rail">
+            <div class="section-kicker">Controls</div>
+            <h3>Background behavior</h3>
+            <p class="rail-copy">The selectors in the top bar change the global palette and scene. These controls tune how strongly the kinetic background behaves.</p>
+            <div class="control-stack">
+              <div class="control-group">
+                <label for="glowRange">Halo spread</label>
+                <input id="glowRange" type="range" min="20" max="100" value="62" />
+              </div>
+              <div class="control-group">
+                <label for="meshRange">Mesh visibility</label>
+                <input id="meshRange" type="range" min="0" max="100" value="54" />
+              </div>
+              <div class="control-group">
+                <label for="driftRange">Drift intensity</label>
+                <input id="driftRange" type="range" min="0" max="100" value="58" />
+              </div>
+            </div>
+            <div class="mini-actions" style="margin-top:20px;">
+              <span class="pill">Cursor responsive</span>
+              <span class="pill">Narrative layout</span>
+            </div>
+          </aside>
+
+          <div class="playground-stage">
+            <div class="stage-shell">
+              <div class="stage-bar">
+                <div class="stage-dots"><span></span><span></span><span></span></div>
+                <div class="stage-label">Live Scene Preview</div>
+              </div>
+              <div class="stage-canvas">
+                <div class="stage-window">
+                  <div>
+                    <div class="section-kicker">Signal field</div>
+                    <h3 class="stage-headline"><span class="accent">Ambient motion</span> with a stable reading plane.</h3>
+                    <p class="visual-copy">This is the core of the redesign. The atmosphere moves and breathes, but the content shell stays steady and legible.</p>
+                  </div>
+                  <div class="stage-meta">
+                    <div class="mini-card">
+                      <div class="label">Scene clarity</div>
+                      <div class="mini-value">9.1</div>
+                    </div>
+                    <div class="mini-card">
+                      <div class="label">Brand memory</div>
+                      <div class="mini-value">8.9</div>
+                    </div>
+                    <div class="mini-card">
+                      <div class="label">Content trust</div>
+                      <div class="mini-value">8.7</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="stage-side">
+                  <div class="rail-item">
+                    <div class="label">Why it works</div>
+                    <div class="rail-copy">The mesh and halos are background-only layers, so the UI feels alive without reducing legibility.</div>
+                  </div>
+                  <div class="rail-item">
+                    <div class="label">Use case</div>
+                    <div class="rail-copy">Best for landing pages, AI product demos, and polished one-screen narratives.</div>
+                  </div>
+                  <div class="rail-item">
+                    <div class="label">Boundary</div>
+                    <div class="rail-copy">Once the content gets data-dense, reduce the atmosphere and let structure take over.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="openclaw">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">OpenClaw Demo</div>
+            <h2 class="section-title">OpenClaw reframed as a product scene.</h2>
+          </div>
+          <p class="section-note">The directory treatment is no longer a sidebar stack. It becomes a ribbon in the product header, which fits this version's more cinematic page structure and keeps the shell distinct from the other variants.</p>
+        </div>
+
+        <div class="oc-shell">
+          <div class="oc-header">
+            <div>
+              <div class="oc-bar">
+                <div class="oc-dots"><span></span><span></span><span></span></div>
+                <div class="oc-label">Vector Shell</div>
+              </div>
+              <h3 class="oc-title"><span class="accent">OpenClaw</span> as a guided command story.</h3>
+              <p class="oc-copy">This layout borrows the narrative pacing from product marketing pages and applies it to an operational shell. The result feels designed, but still believable as software.</p>
+            </div>
+            <div>
+              <div class="section-kicker">Ribbon navigation</div>
+              <div class="ribbon-nav" style="margin-top:12px;">
+                <span class="ribbon-item">Overview</span>
+                <span class="ribbon-item">Runs</span>
+                <span class="ribbon-item">Queues</span>
+                <span class="ribbon-item">Health</span>
+                <span class="ribbon-item">Memory</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="oc-body">
+            <div class="oc-main">
+              <div class="oc-summary">
+                <div class="directive-sheet">
+                  <div class="section-kicker">Primary directive</div>
+                  <div class="visual-title">Keep the shell calm while surfacing only what matters now.</div>
+                  <div class="pill-row">
+                    <span class="pill">21 active</span>
+                    <span class="pill">2 pending alerts</span>
+                    <span class="pill">Stable memory</span>
+                  </div>
+                </div>
+                <div class="summary-card">
+                  <div class="label">Operator brief</div>
+                  <div class="rail-copy">Revenue sync risk remains isolated. Memory compaction is due in 18 minutes. The route backlog is elevated but still below escalation threshold.</div>
+                </div>
+              </div>
+
+              <div class="timeline-shell">
+                <div class="timeline-item">
+                  <div class="label">Overview</div>
+                  <div class="timeline-copy">Main shell headline, current focus work, and top-line route status sit here so the page opens with context instead of raw metrics.</div>
+                </div>
+                <div class="timeline-item">
+                  <div class="label">Runs</div>
+                  <div class="timeline-copy">Execution details are treated as a secondary narrative step, not the first thing on screen.</div>
+                </div>
+                <div class="timeline-item">
+                  <div class="label">Queues</div>
+                  <div class="timeline-copy">Pressure and routing appear inside the main story flow, with escalation notes separated into the right-side rail.</div>
+                </div>
+                <div class="timeline-item">
+                  <div class="label">Health + Memory</div>
+                  <div class="timeline-copy">System integrity lives in the side rail where it stays visible without overwhelming the product narrative.</div>
+                </div>
+              </div>
+            </div>
+
+            <aside class="oc-side">
+              <div class="side-note">
+                <div class="label">Queue watch</div>
+                <h3>Stable with one pressure pocket.</h3>
+                <p>Backlog is concentrated in one export path. The design uses a side note instead of a card grid so the page stays open and directional.</p>
+              </div>
+              <div class="side-note">
+                <div class="label">Health</div>
+                <p>Throughput remains consistent after the morning spike. No retry storm detected. Sync recovery happened once and closed cleanly.</p>
+              </div>
+              <div class="side-note">
+                <div class="label">Memory</div>
+                <p>Compaction timer is visible but not dominant. Retrieval integrity remains within target and drift has not crossed threshold.</p>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="compare">
+        <div class="fit-shell">
+          <div class="fit-grid">
+            <div>
+              <div class="fit-kicker">Fit Notes</div>
+              <h3 class="fit-title">When this version is the right answer.</h3>
+              <p class="fit-copy">Pick this if the product needs to feel premium, directional, and alive before the user even starts reading details. It is strongest when story and software need to coexist on the same page.</p>
+              <div class="fit-tags" style="margin-top:18px;">
+                <span class="fit-tag">Landing pages</span>
+                <span class="fit-tag">AI products</span>
+                <span class="fit-tag">Feature launches</span>
+              </div>
+            </div>
+            <div>
+              <ol class="fit-list">
+                <li>Use it when there is one main message to deliver before the user gets into dense detail.</li>
+                <li>Use it when ambient motion can help establish brand value without getting in the way of interaction.</li>
+                <li>Avoid it when the page is mostly tables, administration, or repetitive forms. In those cases, `v2` or `v3` will be more trustworthy.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+        <div class="footer">Vector Drift Narrative · reference cues from the Codex product page and a wave mesh texture sourced online for background inspiration.</div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const root = document.documentElement;
+    const body = document.body;
+    const schemeSelect = document.getElementById("schemeSelect");
+    const sceneSelect = document.getElementById("sceneSelect");
+    const glowRange = document.getElementById("glowRange");
+    const meshRange = document.getElementById("meshRange");
+    const driftRange = document.getElementById("driftRange");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const schemes = {
+      cobalt: {
+        accent: "#3665f3",
+        accent2: "#8f88ff",
+        accent3: "#79d6d4",
+        glowA: [54, 101, 243],
+        glowB: [143, 136, 255],
+        glowC: [121, 214, 212],
+        spot: "95, 135, 255"
+      },
+      iris: {
+        accent: "#5966ff",
+        accent2: "#be82ff",
+        accent3: "#8ed3ff",
+        glowA: [89, 102, 255],
+        glowB: [190, 130, 255],
+        glowC: [142, 211, 255],
+        spot: "126, 142, 255"
+      },
+      glacier: {
+        accent: "#3471d8",
+        accent2: "#78b0ff",
+        accent3: "#80d4c8",
+        glowA: [52, 113, 216],
+        glowB: [120, 176, 255],
+        glowC: [128, 212, 200],
+        spot: "86, 150, 233"
+      }
+    };
+
+    const scenes = {
+      wave: {
+        bg: "#eef4fc",
+        bgSoft: "#e7edf8",
+        surface: 0.52,
+        surfaceStrong: 0.78,
+        meshMultiplier: 1,
+        meshEnabled: true
+      },
+      halo: {
+        bg: "#f2f5fb",
+        bgSoft: "#e9eef8",
+        surface: 0.5,
+        surfaceStrong: 0.76,
+        meshMultiplier: 0,
+        meshEnabled: false
+      },
+      horizon: {
+        bg: "#eef3fb",
+        bgSoft: "#edf0f7",
+        surface: 0.56,
+        surfaceStrong: 0.8,
+        meshMultiplier: 0.64,
+        meshEnabled: true
+      }
+    };
+
+    let pointerTargetX = 0.5;
+    let pointerTargetY = 0.34;
+    let pointerCurrentX = 0.5;
+    let pointerCurrentY = 0.34;
+
+    function rgba(arr, alpha) {
+      return `rgba(${arr[0]}, ${arr[1]}, ${arr[2]}, ${alpha})`;
+    }
+
+    function updateV4() {
+      const scheme = schemes[schemeSelect.value] || schemes.cobalt;
+      const scene = scenes[sceneSelect.value] || scenes.wave;
+      const glow = Number(glowRange.value) / 100;
+      const mesh = Number(meshRange.value) / 100;
+      const drift = Number(driftRange.value) / 100;
+
+      root.style.setProperty("--bg", scene.bg);
+      root.style.setProperty("--bg-soft", scene.bgSoft);
+      root.style.setProperty("--surface", `rgba(255, 255, 255, ${(scene.surface + glow * 0.05).toFixed(3)})`);
+      root.style.setProperty("--surface-strong", `rgba(255, 255, 255, ${(scene.surfaceStrong + glow * 0.04).toFixed(3)})`);
+      root.style.setProperty("--accent", scheme.accent);
+      root.style.setProperty("--accent-2", scheme.accent2);
+      root.style.setProperty("--accent-3", scheme.accent3);
+      root.style.setProperty("--glow-a", rgba(scheme.glowA, (0.14 + glow * 0.28).toFixed(3)));
+      root.style.setProperty("--glow-b", rgba(scheme.glowB, (0.1 + glow * 0.18).toFixed(3)));
+      root.style.setProperty("--glow-c", rgba(scheme.glowC, (0.08 + glow * 0.16).toFixed(3)));
+      root.style.setProperty("--spot-rgb", scheme.spot);
+      root.style.setProperty("--mesh-opacity", scene.meshEnabled ? (mesh * 0.28 * scene.meshMultiplier).toFixed(3) : "0");
+      root.style.setProperty("--drift-scale", (0.55 + drift * 1.35).toFixed(3));
+      body.style.background = `linear-gradient(180deg, ${scene.bg}, ${scene.bgSoft})`;
+    }
+
+    function animatePointer() {
+      if (!reduceMotion.matches) {
+        pointerCurrentX += (pointerTargetX - pointerCurrentX) * 0.08;
+        pointerCurrentY += (pointerTargetY - pointerCurrentY) * 0.08;
+      } else {
+        pointerCurrentX = 0.5;
+        pointerCurrentY = 0.34;
+      }
+
+      const x = `${(pointerCurrentX * 100).toFixed(2)}%`;
+      const y = `${(pointerCurrentY * 100).toFixed(2)}%`;
+      const bgX = `${((pointerCurrentX - 0.5) * 18).toFixed(2)}px`;
+      const bgY = `${((pointerCurrentY - 0.5) * 14).toFixed(2)}px`;
+      const midX = `${((pointerCurrentX - 0.5) * 32).toFixed(2)}px`;
+      const midY = `${((pointerCurrentY - 0.5) * 24).toFixed(2)}px`;
+      const largeX = `${((pointerCurrentX - 0.5) * 52).toFixed(2)}px`;
+      const largeY = `${((pointerCurrentY - 0.5) * 38).toFixed(2)}px`;
+      const rx = `${((0.5 - pointerCurrentY) * 5).toFixed(2)}deg`;
+      const ry = `${((pointerCurrentX - 0.5) * 5).toFixed(2)}deg`;
+
+      root.style.setProperty("--px", x);
+      root.style.setProperty("--py", y);
+      root.style.setProperty("--fx-sm", bgX);
+      root.style.setProperty("--fy-sm", bgY);
+      root.style.setProperty("--fx-md", midX);
+      root.style.setProperty("--fy-md", midY);
+      root.style.setProperty("--fx-lg", largeX);
+      root.style.setProperty("--fy-lg", largeY);
+      root.style.setProperty("--rx", rx);
+      root.style.setProperty("--ry", ry);
+
+      requestAnimationFrame(animatePointer);
+    }
+
+    window.addEventListener("pointermove", (event) => {
+      pointerTargetX = event.clientX / window.innerWidth;
+      pointerTargetY = event.clientY / window.innerHeight;
+    });
+
+    window.addEventListener("pointerleave", () => {
+      pointerTargetX = 0.5;
+      pointerTargetY = 0.34;
+    });
+
+    schemeSelect.addEventListener("change", updateV4);
+    sceneSelect.addEventListener("change", updateV4);
+    glowRange.addEventListener("input", updateV4);
+    meshRange.addEventListener("input", updateV4);
+    driftRange.addEventListener("input", updateV4);
+    reduceMotion.addEventListener("change", updateV4);
+
+    updateV4();
+    requestAnimationFrame(animatePointer);
+  </script>
+</body>
+</html>

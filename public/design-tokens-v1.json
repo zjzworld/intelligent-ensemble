@@ -1,0 +1,77 @@
+{
+  "meta": {
+    "name": "Design Guidelines v1",
+    "version": "3.0.0",
+    "philosophy": "Atmosphere Glass Studio",
+    "description": "A premium liquid glass system tuned for wallpaper backgrounds and real dashboard readability."
+  },
+  "typography": {
+    "display": {
+      "family": "Barlow Condensed",
+      "weights": [400, 500, 600],
+      "usage": "Hero headlines, panel titles, KPIs, and brand moments."
+    },
+    "body": {
+      "family": "Roboto",
+      "weights": [400, 500],
+      "usage": "Operational copy, support text, forms, and dashboard detail."
+    }
+  },
+  "backgrounds": {
+    "default": "sequoia",
+    "presets": {
+      "sequoia": "./assets/mac-wallpaper-sequoia.jpg",
+      "sonoma": "./assets/mac-wallpaper.jpg",
+      "silver": "./assets/mac-wallpaper-silver.jpg",
+      "radial": "./assets/mac-wallpaper-radial.jpg"
+    },
+    "overlay": "linear-gradient(165deg, rgba(251,251,251,0.82), rgba(245,245,246,0.74))"
+  },
+  "typePalettes": {
+    "prism": ["#FB6EA7", "#7E74FF", "#3BD4C6"],
+    "aurora": ["#6C84FF", "#49B8FF", "#48D4BD"],
+    "opal": ["#F58CBC", "#8CA2FF", "#65D4C0"],
+    "monoSoft": ["#4A5058", "#4A5058", "#4A5058"]
+  },
+  "color": {
+    "textPrimary": "#25303A",
+    "textSecondary": "#5E6670",
+    "inkSoft": "#3A4654"
+  },
+  "liquidGlass": {
+    "blur": "18px-56px",
+    "opacityStrong": "0.28-0.64",
+    "opacitySoft": "derived from strong * 0.46",
+    "saturation": "120%-220%",
+    "borderAlpha": "0.24-0.72",
+    "highlight": "0.20-0.88",
+    "grain": "0.00-0.26",
+    "shadowAlpha": "0.08-0.28",
+    "rules": [
+      "Validate on photographic backgrounds.",
+      "Keep body text dark and calm.",
+      "Use gradient color on display type only.",
+      "No light sweep or decorative scan effects."
+    ]
+  },
+  "motion": {
+    "fast": "140ms",
+    "normal": "220ms",
+    "slow": "320ms",
+    "easing": "cubic-bezier(0.22,1,0.36,1)",
+    "principles": [
+      "micro lift",
+      "depth shift",
+      "tactile press"
+    ]
+  },
+  "dashboardFit": {
+    "openclaw": "medium-high",
+    "bestFor": [
+      "AI product landing pages",
+      "premium personal dashboards",
+      "brand-forward command surfaces"
+    ],
+    "tradeoff": "Most atmospheric of the three, but still requires structural discipline under higher information density."
+  }
+}

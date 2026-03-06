@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "name": "Design Guidelines v3",
+    "version": "3.1.0",
+    "philosophy": "Precision Editorial System",
+    "description": "A readable, premium editorial dashboard system with optional warm and sage-ledger color editions."
+  },
+  "typography": {
+    "display": {
+      "family": "Barlow Condensed",
+      "weights": [400, 500, 600],
+      "usage": "Headlines, navigation labels, KPIs, and section titles."
+    },
+    "body": {
+      "family": "Roboto",
+      "weights": [400, 500],
+      "usage": "Operational copy, tables, labels, helper text, and forms."
+    }
+  },
+  "colorSchemes": {
+    "warmEditorial": {
+      "canvas": "#F1EEE8",
+      "canvasSoft": "#E7E2D8",
+      "paper": "#FBFAF6",
+      "panel": "#F5F1EA",
+      "panelStrong": "#EFE8DD",
+      "ink": "#20242A",
+      "inkSoft": "#3D434D",
+      "muted": "#686E76",
+      "accent": "#566B86",
+      "accentSecondary": "#8C7546"
+    },
+    "sageLedger": {
+      "canvas": "#EEF1EA",
+      "canvasSoft": "#E2E8DF",
+      "paper": "#FBFCF8",
+      "panel": "#F2F6EF",
+      "panelStrong": "#E7EEE4",
+      "ink": "#1F2724",
+      "inkSoft": "#394540",
+      "muted": "#63716B",
+      "accent": "#506A5C",
+      "accentSecondary": "#8D7048"
+    }
+  },
+  "spacing": {
+    "scale": [8, 12, 16, 24, 32, 40, 48, 64],
+    "rule": "Prefer larger outer spacing and tighter internal grouping for information-dense screens."
+  },
+  "radius": {
+    "sm": 8,
+    "md": 12,
+    "lg": 18,
+    "xl": 24
+  },
+  "motion": {
+    "fast": "140ms",
+    "normal": "220ms",
+    "easing": "cubic-bezier(0.22,1,0.36,1)",
+    "rules": [
+      "Use micro lift only.",
+      "Avoid decorative glow or scan effects.",
+      "State changes should feel calm and structural, not dramatic."
+    ]
+  },
+  "backgroundModes": {
+    "studio": "Layered editorial gradient field",
+    "sequoia": "Photographic wallpaper test with palette-matched overlay",
+    "paper": "Neutral review field"
+  },
+  "componentRules": {
+    "panel": "Use solid paper surfaces, explicit borders, restrained shadow, and consistent padding.",
+    "button": "Reserve the primary accent for the most important action only; secondary actions should stay neutral.",
+    "input": "Use soft neutral fill and subtle border emphasis instead of high-contrast focus glows.",
+    "table": "Use clear row dividers, compact headers, and high-contrast body text for long-session readability."
+  },
+  "dashboardFit": {
+    "openclaw": "high",
+    "bestFor": [
+      "Professional dashboards",
+      "hybrid SaaS websites",
+      "command centers",
+      "admin and settings interfaces"
+    ],
+    "tradeoff": "Less atmospheric than liquid glass, but more trustworthy and scalable under higher information density."
+  }
+}

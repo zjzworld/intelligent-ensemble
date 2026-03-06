@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "name": "Design Guidelines v5",
+    "version": "5.1.0",
+    "philosophy": "Quiet Form System",
+    "description": "An ultra-minimal light design system built on whitespace, thin rules, restrained tone, and product-book composition."
+  },
+  "typography": {
+    "display": {
+      "family": "Sora",
+      "weights": [400, 500, 600],
+      "usage": "Hero statements, minimal section titles, and key product labels."
+    },
+    "body": {
+      "family": "Instrument Sans",
+      "weights": [400, 500],
+      "usage": "Body text, navigation, controls, and system detail."
+    }
+  },
+  "base": {
+    "canvas": "#F8F7F3",
+    "canvasSoft": "#EFEEE9",
+    "paper": "rgba(255,255,255,0.72)",
+    "paperStrong": "rgba(255,255,255,0.92)",
+    "ink": "#191D22",
+    "inkSoft": "#3F4853",
+    "muted": "#6F7782",
+    "line": "rgba(34,39,46,0.12)",
+    "lineStrong": "rgba(34,39,46,0.20)"
+  },
+  "schemes": {
+    "stone": {
+      "accent": "#5E7288",
+      "accentSecondary": "#8A7D6B"
+    },
+    "mist": {
+      "accent": "#6682A8",
+      "accentSecondary": "#8E8DA7"
+    },
+    "sage": {
+      "accent": "#5D7A69",
+      "accentSecondary": "#8B7C68"
+    }
+  },
+  "layoutRules": [
+    "Let whitespace and thin dividers do most of the work.",
+    "Use very few filled surfaces and reserve them for places where structure would otherwise collapse.",
+    "Treat the page like a product book, not a dashboard theme.",
+    "Reference extreme minimalism without copying OpenAI's exact rhythm or styling language."
+  ],
+  "motion": {
+    "fast": "120ms",
+    "normal": "180ms",
+    "easing": "cubic-bezier(0.22,1,0.36,1)",
+    "rules": [
+      "prefer opacity and border shifts over lift",
+      "keep hover states quiet",
+      "no ambient animation"
+    ]
+  },
+  "dashboardFit": {
+    "openclaw": "medium",
+    "bestFor": [
+      "Minimal product sites",
+      "calm dashboard shells",
+      "founder pages",
+      "editorial SaaS landing pages"
+    ],
+    "tradeoff": "The cleanest and quietest option, but it depends on strong content hierarchy because the styling is intentionally restrained."
+  }
+}

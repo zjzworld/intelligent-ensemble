@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Design Guidelines v3 · Precision Editorial System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f1eee8;
+      --bg-soft: #e7e2d8;
+      --paper: #fbfaf6;
+      --panel: #f5f1ea;
+      --panel-strong: #efe8dd;
+      --ink: #20242a;
+      --ink-soft: #3d434d;
+      --muted: #686e76;
+      --line: #d6cfc3;
+      --line-strong: #bdb4a7;
+      --accent: #566b86;
+      --accent-soft: rgba(86, 107, 134, 0.12);
+      --accent-2: #8c7546;
+      --success: #56705b;
+      --warning: #b07b3a;
+      --danger: #9f5858;
+      --panel-bg: linear-gradient(180deg, rgba(251, 250, 246, 0.94), rgba(245, 241, 234, 0.97));
+      --panel-strong-bg: linear-gradient(180deg, rgba(245, 241, 234, 0.98), rgba(239, 232, 221, 0.98));
+      --rail-bg: rgba(251, 250, 246, 0.86);
+      --mini-bg: rgba(255, 255, 255, 0.38);
+      --token-bg: rgba(255, 255, 255, 0.42);
+      --metric-bg: rgba(255, 255, 255, 0.46);
+      --input-bg: rgba(255, 255, 255, 0.52);
+      --pattern-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(239, 232, 221, 0.52));
+      --editorial-bg: radial-gradient(320px 120px at 100% 0%, rgba(86, 107, 134, 0.11), transparent 70%), linear-gradient(180deg, rgba(251, 250, 246, 0.9), rgba(239, 232, 221, 0.72));
+      --solid-card-bg: rgba(255, 255, 255, 0.65);
+      --shell-bg: linear-gradient(180deg, rgba(251, 250, 246, 0.98), rgba(239, 232, 221, 0.94));
+      --nav-bg: rgba(255, 255, 255, 0.58);
+      --table-head-bg: rgba(239, 232, 221, 0.58);
+      --shadow: 0 16px 40px rgba(47, 39, 26, 0.08);
+      --shadow-soft: 0 6px 18px rgba(47, 39, 26, 0.06);
+      --space-8: 8px;
+      --space-12: 12px;
+      --space-16: 16px;
+      --space-24: 24px;
+      --space-32: 32px;
+      --space-40: 40px;
+      --space-48: 48px;
+      --space-64: 64px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --panel-pad: 28px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --motion-fast: 140ms;
+      --motion-normal: 220ms;
+      --bg-image:
+        radial-gradient(1100px 620px at 12% -10%, rgba(255, 255, 255, 0.9), transparent 62%),
+        radial-gradient(920px 560px at 100% 8%, rgba(222, 211, 193, 0.66), transparent 58%),
+        linear-gradient(180deg, rgba(251, 250, 246, 0.96), rgba(241, 238, 232, 0.98));
+      --grid-alpha: 0.06;
+      --grid-rgb: 38, 34, 28;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg-image);
+      color: var(--ink);
+      font-family: "Roboto", sans-serif;
+      letter-spacing: 0.01em;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(var(--grid-rgb), var(--grid-alpha)) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(var(--grid-rgb), var(--grid-alpha)) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.7), transparent 88%);
+      z-index: 0;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(760px 400px at 50% 0%, rgba(255, 255, 255, 0.36), transparent 68%);
+      z-index: 0;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .display {
+      font-family: "Barlow Condensed", sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.015em;
+      text-transform: uppercase;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(1360px, 92vw);
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .rail {
+      position: sticky;
+      top: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .content {
+      display: grid;
+      gap: 24px;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      padding: var(--panel-pad);
+      transition:
+        transform var(--motion-normal) var(--ease),
+        border-color var(--motion-normal) var(--ease),
+        box-shadow var(--motion-normal) var(--ease),
+        background var(--motion-normal) var(--ease);
+    }
+
+    .panel:hover {
+      transform: translateY(-2px);
+      border-color: var(--line-strong);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-strong {
+      background: var(--panel-strong-bg);
+    }
+
+    .rail-card {
+      padding: 20px;
+      border-radius: var(--radius-lg);
+      background: var(--rail-bg);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .brand-mark {
+      font-size: 15px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .brand-title {
+      font-size: 40px;
+      line-height: 0.95;
+      margin: 0;
+      color: var(--ink-soft);
+    }
+
+    .rail-copy {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .rail-nav {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .rail-nav a,
+    .version-link {
+      text-decoration: none;
+      padding: 11px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: rgba(239, 232, 221, 0.55);
+      color: var(--ink-soft);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition: border-color var(--motion-fast) var(--ease), background var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease);
+    }
+
+    .rail-nav a:hover,
+    .version-link:hover {
+      background: rgba(86, 107, 134, 0.1);
+      border-color: var(--line-strong);
+      color: var(--ink);
+    }
+
+    .metric-stack {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .metric-box {
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: var(--metric-bg);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font-family: "Barlow Condensed", sans-serif;
+      font-size: 28px;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .hero {
+      padding: clamp(28px, 5vw, 54px);
+      display: grid;
+      gap: 18px;
+      background:
+        linear-gradient(160deg, rgba(251, 250, 246, 0.98), rgba(245, 241, 234, 0.96));
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(700px 320px at 100% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 58%),
+        radial-gradient(460px 260px at 8% 100%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 56%);
+    }
+
+    .hero > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    .section-title,
+    .hero-title,
+    .panel-title {
+      font-family: "Barlow Condensed", sans-serif;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      margin: 0;
+      color: var(--ink-soft);
+    }
+
+    .hero-title {
+      font-size: clamp(54px, 9vw, 102px);
+      line-height: 0.92;
+      max-width: 980px;
+      text-wrap: balance;
+    }
+
+    .subtitle {
+      max-width: 860px;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(14px, 1.4vw, 17px);
+      line-height: 1.8;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .button,
+    .button-secondary,
+    .button-ghost {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 0 16px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      transition:
+        transform var(--motion-fast) var(--ease),
+        border-color var(--motion-fast) var(--ease),
+        background var(--motion-fast) var(--ease),
+        color var(--motion-fast) var(--ease),
+        box-shadow var(--motion-fast) var(--ease);
+    }
+
+    .button {
+      color: #f4f5f7;
+      border-color: transparent;
+      background: linear-gradient(180deg, var(--accent), #485b72);
+      box-shadow: 0 12px 26px rgba(86, 107, 134, 0.18);
+    }
+
+    .button-secondary {
+      color: var(--ink);
+      background: rgba(140, 117, 70, 0.1);
+    }
+
+    .button-ghost {
+      color: var(--ink-soft);
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .button:hover,
+    .button-secondary:hover,
+    .button-ghost:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .tag-row,
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag,
+    .chip {
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.5);
+      color: var(--ink-soft);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .grid-two,
+    .grid-three,
+    .grid-four {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid-four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      font-size: 36px;
+      line-height: 0.94;
+    }
+
+    .section-note {
+      max-width: 520px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .mini-card {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: var(--mini-bg);
+      min-height: 100%;
+    }
+
+    .mini-card h3,
+    .mini-card h4 {
+      font-size: 28px;
+      line-height: 0.96;
+      margin-bottom: 12px;
+    }
+
+    .mini-card p,
+    .list,
+    .token-value,
+    .helper,
+    .table,
+    .preview-copy,
+    .input,
+    .snippet,
+    .compare-table td,
+    .compare-table th,
+    .state-note,
+    .item-copy,
+    .menu-item,
+    .toolbar-meta,
+    .metric-sub,
+    .activity-line,
+    .status-copy,
+    .focus-copy,
+    .section-note,
+    .subtitle,
+    .rail-copy {
+      font-size: 14px;
+      line-height: 1.75;
+    }
+
+    .list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+      display: grid;
+      gap: 8px;
+    }
+
+    .token-card {
+      padding: 18px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: var(--token-bg);
+    }
+
+    .swatch {
+      width: 100%;
+      height: 72px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      margin-bottom: 14px;
+    }
+
+    .token-name {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .token-value {
+      color: var(--ink);
+      font-weight: 500;
+    }
+
+    .helper {
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    .component-row {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .input,
+    .tab,
+    .state-pill {
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--input-bg);
+      color: var(--ink-soft);
+    }
+
+    .input {
+      min-height: 44px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+    }
+
+    .tab-row,
+    .state-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 9px 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .tab.is-active {
+      border-color: rgba(86, 107, 134, 0.26);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .state-pill {
+      padding: 9px 12px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .state-pill.success {
+      color: var(--success);
+      background: rgba(86, 112, 91, 0.12);
+      border-color: rgba(86, 112, 91, 0.2);
+    }
+
+    .state-pill.warning {
+      color: var(--warning);
+      background: rgba(176, 123, 58, 0.12);
+      border-color: rgba(176, 123, 58, 0.2);
+    }
+
+    .state-pill.danger {
+      color: var(--danger);
+      background: rgba(159, 88, 88, 0.12);
+      border-color: rgba(159, 88, 88, 0.22);
+    }
+
+    .pattern-card {
+      min-height: 220px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+    }
+
+    .pattern-preview {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--pattern-bg);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .preview-line,
+    .preview-block,
+    .preview-bar,
+    .preview-chip,
+    .preview-table-row {
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+
+    .preview-line {
+      height: 10px;
+      width: 58%;
+    }
+
+    .preview-line.short {
+      width: 36%;
+    }
+
+    .preview-block {
+      height: 68px;
+    }
+
+    .preview-bar {
+      height: 34px;
+    }
+
+    .preview-chip-row,
+    .preview-table {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preview-chip {
+      width: 76px;
+      height: 28px;
+      border-radius: 999px;
+    }
+
+    .preview-table {
+      display: grid;
+      gap: 8px;
+    }
+
+    .preview-table-row {
+      height: 24px;
+      width: 100%;
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .control-stack {
+      display: grid;
+      gap: 16px;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+    }
+
+    .control label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .control input,
+    .control select {
+      width: 100%;
+    }
+
+    .control input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    .control select {
+      min-height: 42px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.5);
+      color: var(--ink);
+      padding: 0 12px;
+      font-family: "Roboto", sans-serif;
+    }
+
+    .editorial-stage {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--editorial-bg);
+    }
+
+    .stage-toolbar,
+    .stage-footer {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .stage-core {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 12px;
+    }
+
+    .solid-card {
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--solid-card-bg);
+      padding: 16px;
+      min-height: 172px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .solid-card h4 {
+      font-size: 24px;
+      margin-bottom: 12px;
+    }
+
+    .snippet {
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(36, 40, 47, 0.94);
+      color: #d7dde6;
+      padding: 18px;
+      white-space: pre-wrap;
+      font-family: "Roboto", sans-serif;
+    }
+
+    .oc-shell {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: var(--shell-bg);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    .oc-nav {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--nav-bg);
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .oc-brand {
+      font-size: 30px;
+      color: var(--ink-soft);
+      line-height: 0.94;
+      margin: 0;
+    }
+
+    .chapter-head,
+    .chapter-entry,
+    .chapter-footer {
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper) 78%, white);
+    }
+
+    .chapter-head,
+    .chapter-footer {
+      padding: 14px;
+    }
+
+    .oc-nav-kicker,
+    .chapter-kicker {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .oc-nav-kicker {
+      margin-top: 8px;
+    }
+
+    .oc-nav-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .chapter-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .chapter-entry {
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+      padding: 12px;
+      transition: transform var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease), background var(--motion-fast) var(--ease);
+    }
+
+    .chapter-entry:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+    }
+
+    .chapter-entry.is-active {
+      background: color-mix(in srgb, var(--accent) 8%, white);
+      border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+    }
+
+    .chapter-no {
+      width: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      font-family: "Barlow Condensed", sans-serif;
+      font-size: 34px;
+      line-height: 0.92;
+      color: color-mix(in srgb, var(--accent) 72%, var(--ink-soft));
+    }
+
+    .chapter-title,
+    .chapter-footer-title {
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    .chapter-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .chapter-note,
+    .chapter-footer-copy {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--muted);
+    }
+
+    .chapter-tag {
+      min-width: 28px;
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper) 82%, white);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .oc-main {
+      display: grid;
+      gap: 16px;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-title {
+      font-size: 42px;
+      line-height: 0.92;
+    }
+
+    .toolbar-meta {
+      color: var(--muted);
+      max-width: 480px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card,
+    .queue-card,
+    .activity-card,
+    .health-card,
+    .focus-card {
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--input-bg);
+      padding: 18px;
+    }
+
+    .metric-sub,
+    .caps {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .metric-number {
+      font-family: "Barlow Condensed", sans-serif;
+      font-size: 40px;
+      line-height: 0.92;
+      margin: 10px 0 4px;
+      color: var(--ink);
+    }
+
+    .oc-lower {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .item-row,
+    .status-row-card,
+    .focus-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      padding: 12px 0;
+      border-top: 1px solid rgba(189, 180, 167, 0.5);
+    }
+
+    .item-row:first-of-type,
+    .status-row-card:first-of-type,
+    .focus-row:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .item-title,
+    .status-name,
+    .focus-title {
+      font-weight: 500;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+
+    .item-copy,
+    .status-copy,
+    .focus-copy,
+    .activity-line {
+      color: var(--muted);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.56);
+      white-space: nowrap;
+    }
+
+    .pill.success {
+      color: var(--success);
+      background: rgba(86, 112, 91, 0.12);
+      border-color: rgba(86, 112, 91, 0.18);
+    }
+
+    .pill.warning {
+      color: var(--warning);
+      background: rgba(176, 123, 58, 0.12);
+      border-color: rgba(176, 123, 58, 0.18);
+    }
+
+    .pill.danger {
+      color: var(--danger);
+      background: rgba(159, 88, 88, 0.12);
+      border-color: rgba(159, 88, 88, 0.18);
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.44);
+    }
+
+    .compare-table th,
+    .compare-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(189, 180, 167, 0.42);
+      text-align: left;
+      vertical-align: top;
+      color: var(--ink-soft);
+    }
+
+    .compare-table th {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--table-head-bg);
+    }
+
+    .compare-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .footer {
+      padding: 18px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 1120px) {
+      .layout,
+      .control-grid,
+      .oc-shell,
+      .oc-lower,
+      .stage-core {
+        grid-template-columns: 1fr;
+      }
+
+      .rail {
+        position: static;
+      }
+
+      .metric-grid,
+      .grid-four {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(100%, 100vw);
+        padding: 18px 14px 42px;
+      }
+
+      .grid-two,
+      .grid-three,
+      .metric-grid,
+      .grid-four {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-title {
+        font-size: 54px;
+      }
+
+      .toolbar-title {
+        font-size: 34px;
+      }
+
+      .section-head {
+        display: grid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="layout">
+      <aside class="rail">
+        <div class="rail-card">
+          <div class="brand-mark display">Design Guidelines</div>
+          <h1 class="brand-title display">Precision Editorial</h1>
+          <p class="rail-copy">A calmer, more usable design system for real websites and operator dashboards. This version prioritizes reading speed, structural clarity, and long-session comfort over effect-heavy surfaces.</p>
+          <nav class="rail-nav">
+            <a href="#hero">Overview</a>
+            <a href="#tokens">Foundations</a>
+            <a href="#patterns">Patterns</a>
+            <a href="#playground">Playground</a>
+            <a href="#openclaw">OpenClaw</a>
+            <a href="#compare">Compare</a>
+          </nav>
+        </div>
+
+        <div class="rail-card">
+          <div class="metric-label">Version Links</div>
+          <div class="metric-stack">
+            <a class="version-link" href="/v1/">v1 Liquid Glass</a>
+            <a class="version-link" href="/v2/">v2 Flat System</a>
+            <a class="version-link" href="/v3/">v3 Editorial Utility</a>
+            <a class="version-link" href="/v4/">v4 Ribbon Modular</a>
+            <a class="version-link" href="/v5/">v5 Nocturne Frame</a>
+          </div>
+        </div>
+
+        <div class="rail-card">
+          <div class="metric-label">This Version Scores</div>
+          <div class="metric-stack">
+            <div class="metric-box">
+              <div class="metric-label">Reading Speed</div>
+              <div class="metric-value">9.3</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Visual Noise</div>
+              <div class="metric-value">2.1</div>
+            </div>
+            <div class="metric-box">
+              <div class="metric-label">Production Fit</div>
+              <div class="metric-value">9.5</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section class="panel hero panel-strong" id="hero">
+          <div class="eyebrow display">Precision Editorial System</div>
+          <h2 class="hero-title">A more useful web design scheme for products that need to feel clear, premium, and trustworthy.</h2>
+          <p class="subtitle">This direction is less atmospheric than liquid glass and less generic than plain flat UI. It uses warm paper neutrals, narrow condensed display type, disciplined accent logic, and explicit panel structure so the interface still looks premium when information density goes up.</p>
+          <div class="hero-actions">
+            <a class="button" href="#openclaw">View OpenClaw Reframe</a>
+            <a class="button-secondary" href="#playground">Tune the System</a>
+            <a class="button-ghost" href="#compare">Compare All Versions</a>
+          </div>
+          <div class="tag-row">
+            <span class="tag">Reading First</span>
+            <span class="tag">Muted Accent Logic</span>
+            <span class="tag">Curated Surface Tone</span>
+            <span class="tag">Structured Density</span>
+            <span class="tag">OpenClaw Ready</span>
+          </div>
+        </section>
+
+        <section class="panel" id="foundations">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Why This Works Better</h2>
+            </div>
+            <p class="section-note">The point of this version is practical elegance. It is designed for products people will actually use for longer than five minutes, not just admire in a screenshot.</p>
+          </div>
+          <div class="grid-four">
+            <article class="mini-card">
+              <h3>Clarity</h3>
+              <p class="helper">Solid panels and explicit borders keep modules legible even on textured or photographic backgrounds.</p>
+            </article>
+            <article class="mini-card">
+              <h3>Density</h3>
+              <p class="helper">The system scales up to dashboards, settings, tables, and queue views without collapsing into visual noise.</p>
+            </article>
+            <article class="mini-card">
+              <h3>Trust</h3>
+              <p class="helper">Warm neutral surfaces feel calmer than cold blue-gray UI, which makes the product feel more mature and less trendy.</p>
+            </article>
+            <article class="mini-card">
+              <h3>Identity</h3>
+              <p class="helper">Barlow Condensed gives the interface a recognisable narrow voice without turning the whole product into a poster.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel" id="tokens">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Foundation Tokens</h2>
+            </div>
+            <p class="section-note">The palette stays narrow even when the scheme changes. You get one human, warm editorial option and one cooler sage-ledger option, both built for long-session readability.</p>
+          </div>
+          <div class="grid-four">
+            <div class="token-card">
+              <div class="swatch" id="canvasSwatch" style="background:#f1eee8"></div>
+              <div class="token-name">Canvas</div>
+              <div class="token-value" id="canvasValue">#F1EEE8</div>
+              <div class="helper">Default page background for long-session comfort.</div>
+            </div>
+            <div class="token-card">
+              <div class="swatch" id="paperSwatch" style="background:#fbfaf6"></div>
+              <div class="token-name">Paper</div>
+              <div class="token-value" id="paperValue">#FBFAF6</div>
+              <div class="helper">Primary panel surface with soft warmth.</div>
+            </div>
+            <div class="token-card">
+              <div class="swatch" id="accentSwatch" style="background:#566b86"></div>
+              <div class="token-name">Slate Accent</div>
+              <div class="token-value" id="accentValue">#566B86</div>
+              <div class="helper">Use for active state, primary CTA, or important navigation only.</div>
+            </div>
+            <div class="token-card">
+              <div class="swatch" id="signalSwatch" style="background:#8c7546"></div>
+              <div class="token-name">Signal</div>
+              <div class="token-value" id="signalValue">#8C7546</div>
+              <div class="helper">A restrained secondary accent for metrics or editorial emphasis.</div>
+            </div>
+          </div>
+          <div class="grid-two" style="margin-top:16px;">
+            <article class="mini-card">
+              <h3>Typography</h3>
+              <ul class="list">
+                <li><strong>Display:</strong> Barlow Condensed 500 for headlines, section titles, KPIs, and left-rail branding.</li>
+                <li><strong>Body:</strong> Roboto 400/500 for system copy, tables, notes, and operational interfaces.</li>
+                <li><strong>Rule:</strong> let the condensed display create identity while the body font carries all reading load.</li>
+              </ul>
+            </article>
+            <article class="mini-card">
+              <h3>Layout Rules</h3>
+              <ul class="list">
+                <li>Prefer solid panels over transparency once a screen contains multiple data groups.</li>
+                <li>Use muted accents for structure, not decoration.</li>
+                <li>Keep motion to micro-lift and state change only. No sweeps, glows, or theatrical transitions.</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel" id="patterns">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Pattern Fit</h2>
+            </div>
+            <p class="section-note">This scheme is broad enough for marketing, dashboards, and settings. The visual language stays consistent because the structure is doing the work, not the effect layer.</p>
+          </div>
+          <div class="grid-three">
+            <article class="mini-card pattern-card">
+              <div>
+                <h3>Product Landing</h3>
+                <p class="helper">Use wide hero spacing, muted section dividers, and one accent CTA.</p>
+              </div>
+              <div class="pattern-preview">
+                <div class="preview-line"></div>
+                <div class="preview-line short"></div>
+                <div class="preview-block"></div>
+                <div class="preview-chip-row">
+                  <div class="preview-chip"></div>
+                  <div class="preview-chip"></div>
+                </div>
+              </div>
+              <div class="chip-row">
+                <span class="chip">Warm</span>
+                <span class="chip">Premium</span>
+                <span class="chip">Readable</span>
+              </div>
+            </article>
+            <article class="mini-card pattern-card">
+              <div>
+                <h3>Operator Dashboard</h3>
+                <p class="helper">Use strong section boundaries, stable metrics, and a left rail for orientation.</p>
+              </div>
+              <div class="pattern-preview">
+                <div class="preview-bar"></div>
+                <div class="preview-block"></div>
+                <div class="preview-table">
+                  <div class="preview-table-row"></div>
+                  <div class="preview-table-row"></div>
+                  <div class="preview-table-row"></div>
+                </div>
+              </div>
+              <div class="chip-row">
+                <span class="chip">Stable</span>
+                <span class="chip">Low Noise</span>
+                <span class="chip">Long Session</span>
+              </div>
+            </article>
+            <article class="mini-card pattern-card">
+              <div>
+                <h3>Settings / Admin</h3>
+                <p class="helper">Use explicit rows, compact labels, and minimal accent to preserve trust.</p>
+              </div>
+              <div class="pattern-preview">
+                <div class="preview-line"></div>
+                <div class="preview-table">
+                  <div class="preview-table-row"></div>
+                  <div class="preview-table-row"></div>
+                  <div class="preview-table-row"></div>
+                  <div class="preview-table-row"></div>
+                </div>
+              </div>
+              <div class="chip-row">
+                <span class="chip">Precise</span>
+                <span class="chip">Professional</span>
+                <span class="chip">Calm</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel" id="components">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Component Direction</h2>
+            </div>
+            <p class="section-note">Components stay plain enough to disappear into the workflow. The hierarchy comes from spacing, borders, and restrained accent allocation.</p>
+          </div>
+          <div class="grid-two">
+            <article class="mini-card">
+              <h3>Actions</h3>
+              <div class="component-row">
+                <div class="hero-actions">
+                  <a class="button" href="#">Primary Action</a>
+                  <a class="button-secondary" href="#">Secondary</a>
+                  <a class="button-ghost" href="#">Ghost</a>
+                </div>
+                <div class="tab-row">
+                  <span class="tab is-active">Overview</span>
+                  <span class="tab">Queue</span>
+                  <span class="tab">Reports</span>
+                </div>
+                <div class="state-row">
+                  <span class="state-pill success">Healthy</span>
+                  <span class="state-pill warning">Warning</span>
+                  <span class="state-pill danger">Critical</span>
+                </div>
+              </div>
+            </article>
+            <article class="mini-card">
+              <h3>Forms and Copy</h3>
+              <div class="component-row">
+                <div class="input">Search agents, queues, or incidents</div>
+                <div class="input">Filter by environment, status, or assignee</div>
+                <p class="helper">Input chrome stays soft and neutral. Focus treatment should be subtle border emphasis, not glowing decoration.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel" id="playground">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Structural Playground</h2>
+            </div>
+            <p class="section-note">This playground tunes the things that actually matter in production: accent strength, border contrast, shadow depth, spacing density, and background context.</p>
+          </div>
+          <div class="control-grid">
+            <div class="control-stack">
+              <div class="control">
+                <label for="accentRange">Accent Intensity</label>
+                <input id="accentRange" type="range" min="0" max="100" value="58" />
+              </div>
+              <div class="control">
+                <label for="lineRange">Border Contrast</label>
+                <input id="lineRange" type="range" min="0" max="100" value="52" />
+              </div>
+              <div class="control">
+                <label for="shadowRange">Shadow Depth</label>
+                <input id="shadowRange" type="range" min="0" max="100" value="42" />
+              </div>
+              <div class="control">
+                <label for="densityRange">Panel Density</label>
+                <input id="densityRange" type="range" min="20" max="36" value="28" />
+              </div>
+              <div class="control">
+                <label for="schemeSelect">Color Edition</label>
+                <select id="schemeSelect">
+                  <option value="warm">Warm Editorial</option>
+                  <option value="sage">Sage Ledger</option>
+                </select>
+              </div>
+              <div class="control">
+                <label for="backgroundMode">Background Mode</label>
+                <select id="backgroundMode">
+                  <option value="balanced">Balanced Overlay</option>
+                  <option value="clear">High Wallpaper</option>
+                  <option value="paper">Paper Field</option>
+                </select>
+              </div>
+              <div class="control">
+                <label for="wallpaperSelect">Apple Wallpaper</label>
+                <select id="wallpaperSelect"></select>
+              </div>
+            </div>
+            <div class="editorial-stage">
+              <div class="stage-toolbar">
+                <span class="pill">Reading First</span>
+                <span class="pill">Muted Accent</span>
+                <span class="pill">Solid Panels</span>
+              </div>
+              <div class="stage-core">
+                <article class="solid-card">
+                  <h4>Primary Narrative Block</h4>
+                  <p class="preview-copy">Large statements should feel composed, not theatrical. This layout uses a clear title, one accent CTA, and soft sectional rhythm.</p>
+                  <div class="hero-actions" style="margin-top:14px;">
+                    <a class="button" href="#">Launch Flow</a>
+                    <a class="button-ghost" href="#">Review Details</a>
+                  </div>
+                </article>
+                <article class="solid-card">
+                  <h4>Supporting Panel</h4>
+                  <p class="preview-copy">When the interface becomes dense, the system still holds because the borders and surface values remain explicit.</p>
+                  <div class="state-row" style="margin-top:12px;">
+                    <span class="state-pill success">Stable</span>
+                    <span class="state-pill warning">Review</span>
+                  </div>
+                </article>
+              </div>
+              <div class="snippet">Design Style:
+precision editorial dashboard
+warm paper neutrals
+narrow condensed headings
+muted slate and brass accents
+solid panels with explicit borders
+micro lift only, no decorative motion
+
+Use Tailwind + React.
+Follow hierarchy and status color rules strictly.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="openclaw">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">OpenClaw Dashboard Reframe</h2>
+            </div>
+            <p class="section-note">This demo shows why the scheme is a better fit for a personal command center. It keeps the product feeling professional while preserving strong personality through type and proportion.</p>
+          </div>
+          <div class="oc-shell">
+            <aside class="oc-nav">
+              <div class="chapter-head">
+                <div class="oc-brand display">OpenClaw</div>
+                <div class="oc-nav-kicker">Editorial operator shell</div>
+                <div class="oc-nav-meta">
+                  <span class="pill">Focus On</span>
+                  <span class="pill success">Stable</span>
+                </div>
+              </div>
+              <div class="chapter-kicker">Contents</div>
+              <div class="chapter-stack">
+                <div class="chapter-entry is-active">
+                  <div class="chapter-no">01</div>
+                  <div>
+                    <div class="chapter-title">Overview</div>
+                    <div class="chapter-note">Main status view, priority queue, and current focus work.</div>
+                    <div class="chapter-meta">
+                      <span class="chapter-tag">4 live</span>
+                      <span class="chapter-tag">Primary</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="chapter-entry">
+                  <div class="chapter-no">02</div>
+                  <div>
+                    <div class="chapter-title">Runs</div>
+                    <div class="chapter-note">Dispatch history, automations, and recent output quality.</div>
+                    <div class="chapter-meta">
+                      <span class="chapter-tag">9 logs</span>
+                      <span class="chapter-tag">Archive</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="chapter-entry">
+                  <div class="chapter-no">03</div>
+                  <div>
+                    <div class="chapter-title">Queues</div>
+                    <div class="chapter-note">Routing pressure, handoffs, and escalation timing.</div>
+                    <div class="chapter-meta">
+                      <span class="chapter-tag">3 watch</span>
+                      <span class="chapter-tag">Flow</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="chapter-entry">
+                  <div class="chapter-no">04</div>
+                  <div>
+                    <div class="chapter-title">Health</div>
+                    <div class="chapter-note">Runtime health, sync recovery, and issue visibility.</div>
+                    <div class="chapter-meta">
+                      <span class="chapter-tag">2 flags</span>
+                      <span class="chapter-tag">System</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="chapter-entry">
+                  <div class="chapter-no">05</div>
+                  <div>
+                    <div class="chapter-title">Memory</div>
+                    <div class="chapter-note">Reference integrity, compaction timing, and context drift.</div>
+                    <div class="chapter-meta">
+                      <span class="chapter-tag">1 pass</span>
+                      <span class="chapter-tag">Context</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="chapter-footer">
+                <div class="chapter-footer-title">Editor Note</div>
+                <div class="chapter-footer-copy">This shell is designed for longer reading sessions, so the navigation behaves like a table of contents with annotations, not just a stack of tabs.</div>
+              </div>
+            </aside>
+            <div class="oc-main">
+              <div class="toolbar">
+                <div>
+                  <div class="eyebrow display">Operator View</div>
+                  <h3 class="toolbar-title display">OpenClaw Command Center</h3>
+                </div>
+                <div class="toolbar-meta">A tighter, more credible panel system for monitoring agents, queues, and personal focus work without relying on glass effects.</div>
+              </div>
+
+              <div class="metric-grid">
+                <article class="stat-card">
+                  <div class="metric-sub">Agent Success</div>
+                  <div class="metric-number">98.4%</div>
+                  <div class="activity-line">Trailing 7-day completion quality</div>
+                </article>
+                <article class="stat-card">
+                  <div class="metric-sub">Median Latency</div>
+                  <div class="metric-number">142ms</div>
+                  <div class="activity-line">Workflow dispatch to response</div>
+                </article>
+                <article class="stat-card">
+                  <div class="metric-sub">Active Jobs</div>
+                  <div class="metric-number">24</div>
+                  <div class="activity-line">Across monitor, route, and archive flows</div>
+                </article>
+                <article class="stat-card">
+                  <div class="metric-sub">Pending Alerts</div>
+                  <div class="metric-number">3</div>
+                  <div class="activity-line">All currently assigned and tracked</div>
+                </article>
+              </div>
+
+              <div class="oc-lower">
+                <div class="stack">
+                  <article class="queue-card">
+                    <div class="caps">Priority Queue</div>
+                    <div class="item-row">
+                      <div>
+                        <div class="item-title">Revenue Sync Failure</div>
+                        <div class="item-copy">Payment export mismatch detected in Asia Pacific region.</div>
+                      </div>
+                      <span class="pill danger">Critical</span>
+                    </div>
+                    <div class="item-row">
+                      <div>
+                        <div class="item-title">Agent Memory Drift</div>
+                        <div class="item-copy">One assistant is retaining stale workspace references.</div>
+                      </div>
+                      <span class="pill warning">Review</span>
+                    </div>
+                    <div class="item-row">
+                      <div>
+                        <div class="item-title">Weekly Ops Brief</div>
+                        <div class="item-copy">Executive summary draft is ready for tone pass.</div>
+                      </div>
+                      <span class="pill success">Ready</span>
+                    </div>
+                  </article>
+                  <article class="activity-card">
+                    <div class="caps">Recent Activity</div>
+                    <div class="item-row">
+                      <div>
+                        <div class="item-title">Route Optimizer</div>
+                        <div class="item-copy">Rebalanced queue weights after latency spike.</div>
+                      </div>
+                      <span class="pill">2m</span>
+                    </div>
+                    <div class="item-row">
+                      <div>
+                        <div class="item-title">Digest Compiler</div>
+                        <div class="item-copy">Published morning summary to leadership channel.</div>
+                      </div>
+                      <span class="pill">9m</span>
+                    </div>
+                    <div class="item-row">
+                      <div>
+                        <div class="item-title">Archive Worker</div>
+                        <div class="item-copy">Closed 18 completed threads and updated tags.</div>
+                      </div>
+                      <span class="pill">14m</span>
+                    </div>
+                  </article>
+                </div>
+                <div class="stack">
+                  <article class="health-card">
+                    <div class="caps">System Health</div>
+                    <div class="status-row-card">
+                      <div>
+                        <div class="status-name">Memory Store</div>
+                        <div class="status-copy">Stable read/write performance, no retry spikes.</div>
+                      </div>
+                      <span class="pill success">Healthy</span>
+                    </div>
+                    <div class="status-row-card">
+                      <div>
+                        <div class="status-name">Task Queue</div>
+                        <div class="status-copy">Slight growth in backlog during report generation window.</div>
+                      </div>
+                      <span class="pill warning">Watch</span>
+                    </div>
+                    <div class="status-row-card">
+                      <div>
+                        <div class="status-name">Sync Layer</div>
+                        <div class="status-copy">One failed handshake recovered automatically.</div>
+                      </div>
+                      <span class="pill">Recovered</span>
+                    </div>
+                  </article>
+                  <article class="focus-card">
+                    <div class="caps">Personal Focus</div>
+                    <div class="focus-row">
+                      <div>
+                        <div class="focus-title">Design Guidelines v3</div>
+                        <div class="focus-copy">Lock direction before componentizing into React.</div>
+                      </div>
+                      <span class="pill success">In Progress</span>
+                    </div>
+                    <div class="focus-row">
+                      <div>
+                        <div class="focus-title">OpenClaw Shell</div>
+                        <div class="focus-copy">Split into KPI, Queue, Health, and Focus modules.</div>
+                      </div>
+                      <span class="pill">Next</span>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="compare">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Version Comparison</h2>
+            </div>
+            <p class="section-note">If the goal is visual identity only, v1 still has value. If the goal is pure utility, v2 is clean. If the goal is a product that feels both intentional and dependable, v3 is the strongest candidate.</p>
+          </div>
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th>Version</th>
+                <th>Strength</th>
+                <th>Best For</th>
+                <th>Risk</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>v1 Liquid Glass</strong></td>
+                <td>Strongest atmosphere and premium effect.</td>
+                <td>Hero pages, brand exploration, lower-density showcase UI.</td>
+                <td>Readability drops once screens get dense.</td>
+              </tr>
+              <tr>
+                <td><strong>v2 Flat System</strong></td>
+                <td>Maximum clarity and implementation simplicity.</td>
+                <td>Internal tools, settings, and low-brand operational screens.</td>
+                <td>Can feel generic if typography and spacing are not handled carefully.</td>
+              </tr>
+              <tr>
+                <td><strong>v3 Precision Editorial</strong></td>
+                <td>Best balance of trust, identity, and production readability.</td>
+                <td>Professional dashboards, product websites, command centers, and hybrid SaaS shells.</td>
+                <td>Requires discipline: accents must stay muted and structure must stay clean.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="footer">Design Guidelines v3 · Precision Editorial System</div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="/apple-backgrounds.js"></script>
+  <script>
+    const root = document.documentElement;
+    const accentRange = document.getElementById('accentRange');
+    const lineRange = document.getElementById('lineRange');
+    const shadowRange = document.getElementById('shadowRange');
+    const densityRange = document.getElementById('densityRange');
+    const schemeSelect = document.getElementById('schemeSelect');
+    const backgroundMode = document.getElementById('backgroundMode');
+    const wallpaperSelect = document.getElementById('wallpaperSelect');
+    const canvasSwatch = document.getElementById('canvasSwatch');
+    const paperSwatch = document.getElementById('paperSwatch');
+    const accentSwatch = document.getElementById('accentSwatch');
+    const signalSwatch = document.getElementById('signalSwatch');
+    const canvasValue = document.getElementById('canvasValue');
+    const paperValue = document.getElementById('paperValue');
+    const accentValue = document.getElementById('accentValue');
+    const signalValue = document.getElementById('signalValue');
+
+    const schemes = {
+      warm: {
+        canvas: '#F1EEE8',
+        canvasSoft: '#E7E2D8',
+        paper: '#FBFAF6',
+        panel: '#F5F1EA',
+        panelStrong: '#EFE8DD',
+        ink: '#20242A',
+        inkSoft: '#3D434D',
+        muted: '#686E76',
+        lineHue: 36,
+        lineSat: 18,
+        grid: '38, 34, 28',
+        accentHue: 212,
+        accentSatBase: 12,
+        accentLightBase: 34,
+        brassHue: 39,
+        brassSatBase: 24,
+        brassLightBase: 34
+      },
+      sage: {
+        canvas: '#EEF1EA',
+        canvasSoft: '#E2E8DF',
+        paper: '#FBFCF8',
+        panel: '#F2F6EF',
+        panelStrong: '#E7EEE4',
+        ink: '#1F2724',
+        inkSoft: '#394540',
+        muted: '#63716B',
+        lineHue: 126,
+        lineSat: 12,
+        grid: '29, 41, 35',
+        accentHue: 150,
+        accentSatBase: 15,
+        accentLightBase: 31,
+        brassHue: 28,
+        brassSatBase: 28,
+        brassLightBase: 40
+      }
+    };
+
+    const backgrounds = {
+      warm: {
+        balanced: "radial-gradient(1100px 620px at 12% -10%, rgba(255, 255, 255, 0.9), transparent 62%), radial-gradient(920px 560px at 100% 8%, rgba(222, 211, 193, 0.66), transparent 58%), linear-gradient(180deg, rgba(251, 250, 246, 0.78), rgba(241, 238, 232, 0.82))",
+        clear: "linear-gradient(180deg, rgba(251, 250, 246, 0.62), rgba(241, 238, 232, 0.68))",
+        paper: "radial-gradient(860px 480px at 0% 0%, rgba(255, 255, 255, 0.9), transparent 62%), linear-gradient(180deg, rgba(245, 241, 234, 0.98), rgba(231, 226, 216, 0.96))"
+      },
+      sage: {
+        balanced: "radial-gradient(1100px 620px at 12% -10%, rgba(255, 255, 255, 0.84), transparent 62%), radial-gradient(920px 560px at 100% 8%, rgba(208, 220, 208, 0.64), transparent 58%), linear-gradient(180deg, rgba(251, 252, 248, 0.78), rgba(238, 241, 234, 0.84))",
+        clear: "linear-gradient(180deg, rgba(251, 252, 248, 0.62), rgba(238, 241, 234, 0.7))",
+        paper: "radial-gradient(860px 480px at 0% 0%, rgba(255, 255, 255, 0.88), transparent 62%), linear-gradient(180deg, rgba(243, 246, 239, 0.98), rgba(226, 232, 223, 0.97))"
+      }
+    };
+
+    function updateV3() {
+      const scheme = schemes[schemeSelect.value] || schemes.warm;
+      const accent = Number(accentRange.value);
+      const line = Number(lineRange.value);
+      const shadow = Number(shadowRange.value);
+      const density = Number(densityRange.value);
+      const wallpaper = window.resolveAppleBackground(wallpaperSelect.value);
+
+      const accentSat = scheme.accentSatBase + accent * 0.18;
+      const accentLight = scheme.accentLightBase + accent * 0.06;
+      const brassSat = scheme.brassSatBase + accent * 0.1;
+      const brassLight = scheme.brassLightBase + accent * 0.05;
+      const lineLight = 88 - line * 0.13;
+      const lineStrongLight = 77 - line * 0.12;
+      const shadowAlpha = 0.03 + shadow * 0.0013;
+      const shadowAlphaSoft = 0.02 + shadow * 0.0009;
+      const gridAlpha = 0.02 + line * 0.0008;
+      const accentHex = `hsl(${scheme.accentHue} ${accentSat}% ${accentLight}%)`;
+      const accent2Hex = `hsl(${scheme.brassHue} ${brassSat}% ${brassLight}%)`;
+      const lineColor = `hsl(${scheme.lineHue} ${scheme.lineSat}% ${lineLight}%)`;
+      const lineStrongColor = `hsl(${scheme.lineHue} ${Math.max(8, scheme.lineSat - 3)}% ${lineStrongLight}%)`;
+
+      root.style.setProperty('--bg', scheme.canvas);
+      root.style.setProperty('--bg-soft', scheme.canvasSoft);
+      root.style.setProperty('--paper', scheme.paper);
+      root.style.setProperty('--panel', scheme.panel);
+      root.style.setProperty('--panel-strong', scheme.panelStrong);
+      root.style.setProperty('--ink', scheme.ink);
+      root.style.setProperty('--ink-soft', scheme.inkSoft);
+      root.style.setProperty('--muted', scheme.muted);
+      root.style.setProperty('--grid-rgb', scheme.grid);
+      root.style.setProperty('--panel-bg', `linear-gradient(180deg, color-mix(in srgb, ${scheme.paper} 94%, white), color-mix(in srgb, ${scheme.panel} 97%, white))`);
+      root.style.setProperty('--panel-strong-bg', `linear-gradient(180deg, color-mix(in srgb, ${scheme.panel} 98%, white), color-mix(in srgb, ${scheme.panelStrong} 98%, white))`);
+      root.style.setProperty('--rail-bg', `color-mix(in srgb, ${scheme.paper} 86%, white)`);
+      root.style.setProperty('--mini-bg', `color-mix(in srgb, ${scheme.paper} 58%, white)`);
+      root.style.setProperty('--token-bg', `color-mix(in srgb, ${scheme.paper} 64%, white)`);
+      root.style.setProperty('--metric-bg', `color-mix(in srgb, ${scheme.paper} 72%, white)`);
+      root.style.setProperty('--input-bg', `color-mix(in srgb, ${scheme.paper} 82%, white)`);
+      root.style.setProperty('--pattern-bg', `linear-gradient(180deg, color-mix(in srgb, ${scheme.paper} 78%, white), color-mix(in srgb, ${scheme.panelStrong} 68%, white))`);
+      root.style.setProperty('--editorial-bg', `radial-gradient(320px 120px at 100% 0%, color-mix(in srgb, ${accentHex} 12%, transparent), transparent 70%), linear-gradient(180deg, color-mix(in srgb, ${scheme.paper} 90%, white), color-mix(in srgb, ${scheme.panelStrong} 72%, white))`);
+      root.style.setProperty('--solid-card-bg', `color-mix(in srgb, ${scheme.paper} 86%, white)`);
+      root.style.setProperty('--shell-bg', `linear-gradient(180deg, color-mix(in srgb, ${scheme.paper} 98%, white), color-mix(in srgb, ${scheme.panelStrong} 94%, white))`);
+      root.style.setProperty('--nav-bg', `color-mix(in srgb, ${scheme.paper} 78%, white)`);
+      root.style.setProperty('--table-head-bg', `color-mix(in srgb, ${scheme.panelStrong} 74%, white)`);
+
+      root.style.setProperty('--accent', accentHex);
+      root.style.setProperty('--accent-soft', `color-mix(in srgb, ${accentHex} 12%, transparent)`);
+      root.style.setProperty('--accent-2', accent2Hex);
+      root.style.setProperty('--line', lineColor);
+      root.style.setProperty('--line-strong', lineStrongColor);
+      root.style.setProperty('--shadow', `0 16px 40px rgba(47, 39, 26, ${shadowAlpha.toFixed(3)})`);
+      root.style.setProperty('--shadow-soft', `0 6px 18px rgba(47, 39, 26, ${shadowAlphaSoft.toFixed(3)})`);
+      root.style.setProperty('--panel-pad', `${density}px`);
+      root.style.setProperty('--grid-alpha', gridAlpha.toFixed(3));
+      const overlay = (backgrounds[schemeSelect.value] || backgrounds.warm)[backgroundMode.value] || backgrounds.warm.balanced;
+      root.style.setProperty('--bg-image', wallpaper ? `${overlay}, url('${wallpaper}') center center / cover fixed no-repeat` : overlay);
+
+      canvasSwatch.style.background = scheme.canvas;
+      paperSwatch.style.background = scheme.paper;
+      accentSwatch.style.background = accentHex;
+      signalSwatch.style.background = accent2Hex;
+      canvasValue.textContent = scheme.canvas.toUpperCase();
+      paperValue.textContent = scheme.paper.toUpperCase();
+      accentValue.textContent = accentHex.replace(/\s+/g, ' ');
+      signalValue.textContent = accent2Hex.replace(/\s+/g, ' ');
+    }
+
+    accentRange.addEventListener('input', updateV3);
+    lineRange.addEventListener('input', updateV3);
+    shadowRange.addEventListener('input', updateV3);
+    densityRange.addEventListener('input', updateV3);
+    schemeSelect.addEventListener('change', updateV3);
+    backgroundMode.addEventListener('change', updateV3);
+    window.populateAppleBackgroundSelect(wallpaperSelect, { defaultValue: 'custom-sequoia-local', includeNone: true, noneLabel: 'No Wallpaper' });
+    wallpaperSelect.addEventListener('change', updateV3);
+
+    updateV3();
+  </script>
+</body>
+</html>
